@@ -11,6 +11,7 @@ import Cadastro from "./pages/Cadastro";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import SaibaMais from "./pages/SaibaMais";
+import GuiasInstalacao from "./pages/GuiasInstalacao";
 import PagamentoSucesso from "./pages/PagamentoSucesso";
 import PagamentoFalha from "./pages/PagamentoFalha";
 import PagamentoPendente from "./pages/PagamentoPendente";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/cadastro" element={<Cadastro />} />
             <Route path="/saiba-mais" element={<SaibaMais />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/guias-instalacao" element={<GuiasInstalacao />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
             <Route path="/pagamento/falha" element={<PagamentoFalha />} />
