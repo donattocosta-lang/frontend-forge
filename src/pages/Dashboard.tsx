@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
@@ -17,19 +19,45 @@ import {
   CreditCard,
   Clock,
   Loader2,
-  Package
+  Package,
+  Save,
+  Eye,
+  EyeOff,
+  Lock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { user, logout, isAuthenticated, isLoading, updateUser } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('pedidos');
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [notificacoes, setNotificacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    nome_completo: '',
+    telefone: ''
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+  
+  // Password change state
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    senha_atual: '',
+    nova_senha: '',
+    confirmar_senha: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    atual: false,
+    nova: false,
+    confirmar: false
+  });
+  const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -42,6 +70,15 @@ const Dashboard = () => {
       loadData();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        nome_completo: user.nome_completo || '',
+        telefone: user.telefone || ''
+      });
+    }
+  }, [user]);
 
   const loadData = async () => {
     setLoading(true);
@@ -67,6 +104,91 @@ const Dashboard = () => {
       ]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profileData.nome_completo.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome completo é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      await api.updateProfile(profileData);
+      updateUser({
+        ...user!,
+        nome_completo: profileData.nome_completo,
+        telefone: profileData.telefone
+      });
+      setIsEditingProfile(false);
+      toast({
+        title: "Perfil atualizado",
+        description: "Seus dados foram salvos com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar perfil",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordData.senha_atual || !passwordData.nova_senha || !passwordData.confirmar_senha) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordData.nova_senha !== passwordData.confirmar_senha) {
+      toast({
+        title: "Erro",
+        description: "As senhas não coincidem",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordData.nova_senha.length < 6) {
+      toast({
+        title: "Erro",
+        description: "A nova senha deve ter pelo menos 6 caracteres",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await api.changePassword({
+        senha_atual: passwordData.senha_atual,
+        nova_senha: passwordData.nova_senha
+      });
+      setPasswordData({ senha_atual: '', nova_senha: '', confirmar_senha: '' });
+      setIsChangingPassword(false);
+      toast({
+        title: "Senha alterada",
+        description: "Sua senha foi alterada com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao alterar senha",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -277,27 +399,193 @@ const Dashboard = () => {
 
               {activeTab === 'perfil' && (
                 <div>
-                  <h1 className="font-display text-2xl font-bold mb-6">Meu Perfil</h1>
+                  <div className="flex items-center justify-between mb-6">
+                    <h1 className="font-display text-2xl font-bold">Meu Perfil</h1>
+                    {!isEditingProfile && (
+                      <Button variant="outline" onClick={() => setIsEditingProfile(true)}>
+                        Editar Perfil
+                      </Button>
+                    )}
+                  </div>
                   
+                  <div className="gradient-border p-6 rounded-2xl mb-6">
+                    {isEditingProfile ? (
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="nome_completo">Nome Completo</Label>
+                          <Input 
+                            id="nome_completo"
+                            value={profileData.nome_completo}
+                            onChange={(e) => setProfileData({ ...profileData, nome_completo: e.target.value })}
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label>E-mail</Label>
+                          <Input 
+                            value={user?.email || ''}
+                            disabled
+                            className="mt-2 bg-muted"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">O e-mail não pode ser alterado</p>
+                        </div>
+                        <div>
+                          <Label htmlFor="telefone">Telefone</Label>
+                          <Input 
+                            id="telefone"
+                            value={profileData.telefone}
+                            onChange={(e) => setProfileData({ ...profileData, telefone: e.target.value })}
+                            placeholder="(00) 00000-0000"
+                            className="mt-2"
+                          />
+                        </div>
+                        <div className="flex gap-2 pt-4">
+                          <Button 
+                            variant="gradient" 
+                            onClick={handleSaveProfile}
+                            disabled={savingProfile}
+                          >
+                            {savingProfile ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="w-4 h-4 mr-2" />
+                            )}
+                            Salvar
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              setIsEditingProfile(false);
+                              setProfileData({
+                                nome_completo: user?.nome_completo || '',
+                                telefone: user?.telefone || ''
+                              });
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="text-sm text-muted-foreground">Nome Completo</label>
+                          <p className="font-medium mt-1">{user?.nome_completo}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm text-muted-foreground">E-mail</label>
+                          <p className="font-medium mt-1">{user?.email}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm text-muted-foreground">Telefone</label>
+                          <p className="font-medium mt-1">{user?.telefone || 'Não informado'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm text-muted-foreground">Status da Conta</label>
+                          <p className="font-medium mt-1 capitalize">{user?.status}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Change Password Section */}
                   <div className="gradient-border p-6 rounded-2xl">
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="text-sm text-muted-foreground">Nome Completo</label>
-                        <p className="font-medium mt-1">{user?.nome_completo}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <Lock className="w-5 h-5 text-primary" />
+                        <h3 className="font-display font-semibold">Alterar Senha</h3>
                       </div>
-                      <div>
-                        <label className="text-sm text-muted-foreground">E-mail</label>
-                        <p className="font-medium mt-1">{user?.email}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-muted-foreground">Telefone</label>
-                        <p className="font-medium mt-1">{user?.telefone || 'Não informado'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-muted-foreground">Status da Conta</label>
-                        <p className="font-medium mt-1 capitalize">{user?.status}</p>
-                      </div>
+                      {!isChangingPassword && (
+                        <Button variant="outline" size="sm" onClick={() => setIsChangingPassword(true)}>
+                          Alterar
+                        </Button>
+                      )}
                     </div>
+
+                    {isChangingPassword && (
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="senha_atual">Senha Atual</Label>
+                          <div className="relative">
+                            <Input 
+                              id="senha_atual"
+                              type={showPasswords.atual ? 'text' : 'password'}
+                              value={passwordData.senha_atual}
+                              onChange={(e) => setPasswordData({ ...passwordData, senha_atual: e.target.value })}
+                              className="mt-2 pr-10"
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 mt-1 text-muted-foreground hover:text-foreground"
+                              onClick={() => setShowPasswords({ ...showPasswords, atual: !showPasswords.atual })}
+                            >
+                              {showPasswords.atual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="nova_senha">Nova Senha</Label>
+                          <div className="relative">
+                            <Input 
+                              id="nova_senha"
+                              type={showPasswords.nova ? 'text' : 'password'}
+                              value={passwordData.nova_senha}
+                              onChange={(e) => setPasswordData({ ...passwordData, nova_senha: e.target.value })}
+                              className="mt-2 pr-10"
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 mt-1 text-muted-foreground hover:text-foreground"
+                              onClick={() => setShowPasswords({ ...showPasswords, nova: !showPasswords.nova })}
+                            >
+                              {showPasswords.nova ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="confirmar_senha">Confirmar Nova Senha</Label>
+                          <div className="relative">
+                            <Input 
+                              id="confirmar_senha"
+                              type={showPasswords.confirmar ? 'text' : 'password'}
+                              value={passwordData.confirmar_senha}
+                              onChange={(e) => setPasswordData({ ...passwordData, confirmar_senha: e.target.value })}
+                              className="mt-2 pr-10"
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 mt-1 text-muted-foreground hover:text-foreground"
+                              onClick={() => setShowPasswords({ ...showPasswords, confirmar: !showPasswords.confirmar })}
+                            >
+                              {showPasswords.confirmar ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-4">
+                          <Button 
+                            variant="gradient" 
+                            onClick={handleChangePassword}
+                            disabled={savingPassword}
+                          >
+                            {savingPassword ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="w-4 h-4 mr-2" />
+                            )}
+                            Alterar Senha
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              setIsChangingPassword(false);
+                              setPasswordData({ senha_atual: '', nova_senha: '', confirmar_senha: '' });
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -137,6 +137,41 @@ class ApiClient {
   async getEstatisticas() {
     return this.request<any>('/api/admin/estatisticas');
   }
+
+  // Perfil do usuário
+  async updateProfile(data: { nome_completo?: string; telefone?: string }) {
+    return this.request<any>('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async changePassword(data: { senha_atual: string; nova_senha: string }) {
+    return this.request<any>('/api/auth/change-password', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Admin - Usuários
+  async getAdminUsuarios(filters?: { status?: string; search?: string }) {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.search) params.append('search', filters.search);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<any[]>(`/api/admin/usuarios${query}`);
+  }
+
+  async getAdminUsuario(id: string) {
+    return this.request<any>(`/api/admin/usuarios/${id}`);
+  }
+
+  async updateAdminUsuario(id: string, data: { nome_completo?: string; telefone?: string; status?: string }) {
+    return this.request<any>(`/api/admin/usuarios/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const api = new ApiClient();
