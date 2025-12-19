@@ -3,7 +3,7 @@ import { Footer } from '@/components/Footer';
 import { PlanCard } from '@/components/PlanCard';
 import { Button } from '@/components/ui/button';
 import { Tv, Shield, Clock, Headphones, Play, Zap, Star, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
@@ -124,10 +124,12 @@ const Index = () => {
                 <Play className="w-5 h-5" />
                 Ver Planos
               </Button>
-              <Button variant="outline" size="xl">
-                Saiba Mais
-                <ChevronRight className="w-5 h-5" />
-              </Button>
+              <Link to="/saiba-mais">
+                <Button variant="outline" size="xl">
+                  Saiba Mais
+                  <ChevronRight className="w-5 h-5" />
+                </Button>
+              </Link>
             </div>
 
             <div className="flex items-center justify-center gap-8 mt-12 text-sm text-muted-foreground">
