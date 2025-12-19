@@ -109,10 +109,16 @@ const SaibaMais = () => {
               <h1 className="font-display text-4xl md:text-5xl font-bold mb-6">
                 O que é <span className="gradient-text">IPTV</span>?
               </h1>
-              <p className="text-lg text-muted-foreground mb-8">
+              <p className="text-lg text-muted-foreground mb-6">
                 IPTV (Internet Protocol Television) é uma tecnologia que permite assistir TV através da internet, 
                 oferecendo milhares de canais e conteúdos on demand com qualidade superior e preço acessível.
               </p>
+
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 mb-6">
+                <Zap className="w-4 h-4 text-success" />
+                <span className="text-sm text-success font-medium">Experimente grátis por 6 horas antes de assinar!</span>
+              </div>
+
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/#planos">
                   <Button variant="gradient" size="xl">
