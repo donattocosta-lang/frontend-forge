@@ -172,6 +172,30 @@ class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  // Solicitações de Teste Grátis
+  async getSolicitacoesTeste() {
+    return this.request<any[]>('/api/solicitacoes-teste');
+  }
+
+  async solicitarTesteGratis(observacoes?: string) {
+    return this.request<{ message: string; solicitacao: any }>('/api/solicitacoes-teste', {
+      method: 'POST',
+      body: JSON.stringify({ observacoes }),
+    });
+  }
+
+  async getAdminSolicitacoesTeste(status?: string) {
+    const query = status ? `?status=${status}` : '';
+    return this.request<any[]>(`/api/admin/solicitacoes-teste${query}`);
+  }
+
+  async processarSolicitacaoTeste(id: string, data: { status: 'aprovado' | 'rejeitado'; observacoes_admin?: string }) {
+    return this.request<{ message: string; solicitacao: any }>(`/api/admin/solicitacoes-teste/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const api = new ApiClient();
