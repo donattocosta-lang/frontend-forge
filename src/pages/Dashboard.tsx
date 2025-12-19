@@ -24,7 +24,11 @@ import {
   Eye,
   EyeOff,
   Lock,
-  BookOpen
+  BookOpen,
+  Gift,
+  CheckCircle,
+  XCircle,
+  AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,7 +40,9 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('pedidos');
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [notificacoes, setNotificacoes] = useState<any[]>([]);
+  const [solicitacoesTeste, setSolicitacoesTeste] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [solicitandoTeste, setSolicitandoTeste] = useState(false);
   
   // Profile editing state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -84,12 +90,14 @@ const Dashboard = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [pedidosData, notificacoesData] = await Promise.all([
+      const [pedidosData, notificacoesData, solicitacoesTesteData] = await Promise.all([
         api.getPedidos().catch(() => []),
         api.getNotificacoes().catch(() => []),
+        api.getSolicitacoesTeste().catch(() => []),
       ]);
       setPedidos(pedidosData);
       setNotificacoes(notificacoesData);
+      setSolicitacoesTeste(solicitacoesTesteData);
     } catch (error) {
       // Mock data for demo
       setPedidos([
@@ -107,6 +115,35 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
+
+  const handleSolicitarTeste = async () => {
+    setSolicitandoTeste(true);
+    try {
+      const response = await api.solicitarTesteGratis();
+      toast({
+        title: "Solicitação enviada!",
+        description: "Sua solicitação de teste grátis foi enviada com sucesso. Aguarde a aprovação.",
+      });
+      // Reload data to show new request
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao solicitar teste grátis",
+        variant: "destructive",
+      });
+    } finally {
+      setSolicitandoTeste(false);
+    }
+  };
+
+  const getTesteStatus = () => {
+    if (solicitacoesTeste.length === 0) return null;
+    const ultimaSolicitacao = solicitacoesTeste[0];
+    return ultimaSolicitacao;
+  };
+
+  const testeAtual = getTesteStatus();
 
   const handleSaveProfile = async () => {
     if (!profileData.nome_completo.trim()) {
@@ -290,6 +327,51 @@ const Dashboard = () => {
                     <ChevronRight className="w-4 h-4" />
                   </Link>
                 </nav>
+
+                {/* Teste Grátis Button */}
+                {!testeAtual || testeAtual.status === 'rejeitado' ? (
+                  <div className="mt-6 p-4 rounded-xl bg-green-500/10 border border-green-500/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Gift className="w-5 h-5 text-green-500" />
+                      <span className="font-semibold text-green-500">Teste Grátis</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Experimente nosso serviço por 24 horas sem compromisso!
+                    </p>
+                    <Button 
+                      className="w-full bg-green-500 hover:bg-green-600 text-white"
+                      onClick={handleSolicitarTeste}
+                      disabled={solicitandoTeste}
+                    >
+                      {solicitandoTeste ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Gift className="w-4 h-4 mr-2" />
+                      )}
+                      Solicitar Teste Grátis
+                    </Button>
+                  </div>
+                ) : testeAtual.status === 'pendente' ? (
+                  <div className="mt-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="w-5 h-5 text-yellow-500" />
+                      <span className="font-semibold text-yellow-500">Aguardando Aprovação</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Sua solicitação de teste grátis está sendo analisada. Em breve você receberá uma resposta.
+                    </p>
+                  </div>
+                ) : testeAtual.status === 'aprovado' ? (
+                  <div className="mt-6 p-4 rounded-xl bg-green-500/10 border border-green-500/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      <span className="font-semibold text-green-500">Teste Aprovado!</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Seu teste grátis foi aprovado. Aproveite!
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
               <Button variant="outline" className="w-full" onClick={handleLogout}>
