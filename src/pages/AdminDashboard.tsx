@@ -24,7 +24,9 @@ import {
   Loader2,
   Plus,
   Edit,
-  Eye
+  Eye,
+  Gift,
+  XCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -55,20 +57,27 @@ const AdminDashboard = () => {
     receita_total: 0,
     pagamentos_pendentes: 0,
     acessos_pendentes: 0,
+    testes_pendentes: 0,
   });
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [planos, setPlanos] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [solicitacoesTeste, setSolicitacoesTeste] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState('todos');
+  const [testeSearchTerm, setTesteSearchTerm] = useState('');
+  const [testeStatusFilter, setTesteStatusFilter] = useState('todos');
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const [selectedUsuario, setSelectedUsuario] = useState<any>(null);
+  const [selectedTeste, setSelectedTeste] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [planoDialogOpen, setPlanoDialogOpen] = useState(false);
   const [usuarioDialogOpen, setUsuarioDialogOpen] = useState(false);
+  const [testeDialogOpen, setTesteDialogOpen] = useState(false);
   const [editingPlano, setEditingPlano] = useState<any>(null);
+  const [processingTeste, setProcessingTeste] = useState(false);
 
   useEffect(() => {
     if (!isLoading) {
@@ -91,15 +100,21 @@ const AdminDashboard = () => {
     try {
       if (activeTab === 'dashboard') {
         const statsData = await api.getEstatisticas().catch(() => null);
-        if (statsData) setStats(statsData);
-        else {
+        const testesData = await api.getAdminSolicitacoesTeste().catch(() => []);
+        const testesPendentes = testesData.filter((t: any) => t.status === 'pendente').length;
+        
+        if (statsData) {
+          setStats({ ...statsData, testes_pendentes: testesPendentes });
+        } else {
           setStats({
             total_vendas: 156,
             receita_total: 12450.00,
             pagamentos_pendentes: 8,
             acessos_pendentes: 5,
+            testes_pendentes: testesPendentes,
           });
         }
+        setSolicitacoesTeste(testesData);
       }
 
       if (activeTab === 'pedidos' || activeTab === 'dashboard') {
@@ -158,6 +173,11 @@ const AdminDashboard = () => {
           ]);
         }
       }
+
+      if (activeTab === 'testes') {
+        const testesData = await api.getAdminSolicitacoesTeste().catch(() => []);
+        setSolicitacoesTeste(testesData);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -204,6 +224,41 @@ const AdminDashboard = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const filteredTestes = solicitacoesTeste.filter(teste => {
+    const matchesSearch = 
+      teste.usuario_nome?.toLowerCase().includes(testeSearchTerm.toLowerCase()) ||
+      teste.usuario_email?.toLowerCase().includes(testeSearchTerm.toLowerCase()) ||
+      teste.id.includes(testeSearchTerm);
+    
+    const matchesStatus = testeStatusFilter === 'todos' || teste.status === testeStatusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleProcessarTeste = async (testeId: string, status: 'aprovado' | 'rejeitado', observacoes: string) => {
+    setProcessingTeste(true);
+    try {
+      await api.processarSolicitacaoTeste(testeId, { status, observacoes_admin: observacoes });
+      toast({
+        title: status === 'aprovado' ? "Teste aprovado" : "Teste rejeitado",
+        description: status === 'aprovado' 
+          ? "O teste grátis foi aprovado e o cliente será notificado."
+          : "A solicitação foi rejeitada e o cliente será notificado.",
+      });
+      loadData();
+      setTesteDialogOpen(false);
+      setSelectedTeste(null);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao processar solicitação",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingTeste(false);
+    }
+  };
+
   const handleUpdateUsuario = async (usuarioId: string, data: any) => {
     try {
       await api.updateAdminUsuario(usuarioId, data);
@@ -233,6 +288,7 @@ const AdminDashboard = () => {
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'pedidos', icon: ShoppingBag, label: 'Pedidos', badge: stats.acessos_pendentes },
+    { id: 'testes', icon: Gift, label: 'Testes Grátis', badge: stats.testes_pendentes },
     { id: 'planos', icon: Package, label: 'Planos' },
     { id: 'usuarios', icon: Users, label: 'Usuários' },
   ];
@@ -309,6 +365,17 @@ const AdminDashboard = () => {
                   </div>
                   <p className="text-sm text-muted-foreground">Acessos Pendentes</p>
                   <p className="font-display text-2xl font-bold">{stats.acessos_pendentes}</p>
+                </div>
+
+                <div className="p-6 rounded-2xl bg-card border border-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <Gift className="w-8 h-8 text-success" />
+                    {stats.testes_pendentes > 0 && (
+                      <span className="text-xs text-success bg-success/20 px-2 py-1 rounded-full">Novo</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Testes Pendentes</p>
+                  <p className="font-display text-2xl font-bold">{stats.testes_pendentes}</p>
                 </div>
               </div>
 
@@ -595,6 +662,110 @@ const AdminDashboard = () => {
               </div>
             </div>
           )}
+
+          {/* Testes Grátis View */}
+          {activeTab === 'testes' && (
+            <div>
+              <h1 className="font-display text-2xl font-bold mb-6">Solicitações de Teste Grátis</h1>
+
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, email ou ID..."
+                    className="pl-10"
+                    value={testeSearchTerm}
+                    onChange={(e) => setTesteSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Select value={testeStatusFilter} onValueChange={setTesteStatusFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="pendente">Pendentes</SelectItem>
+                    <SelectItem value="aprovado">Aprovados</SelectItem>
+                    <SelectItem value="rejeitado">Rejeitados</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Testes Table */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">ID</th>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Status</th>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Observações</th>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Data</th>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center">
+                            <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
+                          </td>
+                        </tr>
+                      ) : filteredTestes.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                            Nenhuma solicitação encontrada
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredTestes.map((teste) => (
+                          <tr key={teste.id} className="border-t border-border/50 hover:bg-muted/30">
+                            <td className="py-4 px-4 font-mono text-sm">#{teste.id.slice(0, 8)}</td>
+                            <td className="py-4 px-4">
+                              <div>
+                                <p className="font-medium">{teste.usuario_nome || 'Usuário'}</p>
+                                <p className="text-sm text-muted-foreground">{teste.usuario_email || '-'}</p>
+                              </div>
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                teste.status === 'pendente' ? 'bg-warning/20 text-warning' :
+                                teste.status === 'aprovado' ? 'bg-success/20 text-success' :
+                                'bg-destructive/20 text-destructive'
+                              }`}>
+                                {teste.status === 'pendente' ? 'Pendente' :
+                                 teste.status === 'aprovado' ? 'Aprovado' : 'Rejeitado'}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 text-sm text-muted-foreground max-w-xs truncate">
+                              {teste.observacoes || '-'}
+                            </td>
+                            <td className="py-4 px-4 text-sm">
+                              {format(new Date(teste.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                            </td>
+                            <td className="py-4 px-4">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedTeste({ ...teste, observacoes_admin: teste.observacoes_admin || '' });
+                                  setTesteDialogOpen(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -800,6 +971,118 @@ const AdminDashboard = () => {
                   Salvar Alterações
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Teste Detail Dialog */}
+      <Dialog open={testeDialogOpen} onOpenChange={setTesteDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Solicitação de Teste Grátis</DialogTitle>
+          </DialogHeader>
+          
+          {selectedTeste && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Cliente</Label>
+                  <p className="font-medium">{selectedTeste.usuario_nome || 'Usuário'}</p>
+                  <p className="text-sm text-muted-foreground">{selectedTeste.usuario_email || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Status Atual</Label>
+                  <div className="mt-1">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      selectedTeste.status === 'pendente' ? 'bg-warning/20 text-warning' :
+                      selectedTeste.status === 'aprovado' ? 'bg-success/20 text-success' :
+                      'bg-destructive/20 text-destructive'
+                    }`}>
+                      {selectedTeste.status === 'pendente' ? 'Pendente' :
+                       selectedTeste.status === 'aprovado' ? 'Aprovado' : 'Rejeitado'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Data da Solicitação</Label>
+                  <p className="font-medium">
+                    {format(new Date(selectedTeste.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+                {selectedTeste.aprovado_em && (
+                  <div>
+                    <Label className="text-muted-foreground">Processado em</Label>
+                    <p className="font-medium">
+                      {format(new Date(selectedTeste.aprovado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {selectedTeste.observacoes && (
+                <div>
+                  <Label className="text-muted-foreground">Observações do Cliente</Label>
+                  <p className="mt-1 p-3 bg-muted rounded-lg text-sm">{selectedTeste.observacoes}</p>
+                </div>
+              )}
+
+              <div>
+                <Label htmlFor="observacoes_admin">Observações do Admin</Label>
+                <Textarea 
+                  id="observacoes_admin"
+                  placeholder="Adicione observações sobre a solicitação..."
+                  value={selectedTeste.observacoes_admin || ''}
+                  onChange={(e) => setSelectedTeste({ ...selectedTeste, observacoes_admin: e.target.value })}
+                  className="mt-2"
+                  disabled={selectedTeste.status !== 'pendente'}
+                />
+              </div>
+
+              {selectedTeste.status === 'pendente' && (
+                <div className="flex gap-2 pt-4">
+                  <Button 
+                    variant="outline"
+                    className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={() => handleProcessarTeste(selectedTeste.id, 'rejeitado', selectedTeste.observacoes_admin)}
+                    disabled={processingTeste}
+                  >
+                    {processingTeste ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <XCircle className="w-4 h-4 mr-2" />
+                    )}
+                    Rejeitar
+                  </Button>
+                  <Button 
+                    className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+                    onClick={() => handleProcessarTeste(selectedTeste.id, 'aprovado', selectedTeste.observacoes_admin)}
+                    disabled={processingTeste}
+                  >
+                    {processingTeste ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                    )}
+                    Aprovar
+                  </Button>
+                </div>
+              )}
+
+              {selectedTeste.status !== 'pendente' && (
+                <div className="pt-4">
+                  <Button 
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setTesteDialogOpen(false)}
+                  >
+                    Fechar
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
