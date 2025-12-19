@@ -12,6 +12,9 @@ import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import SaibaMais from "./pages/SaibaMais";
 import GuiasInstalacao from "./pages/GuiasInstalacao";
+import FAQ from "./pages/FAQ";
+import TermosUso from "./pages/TermosUso";
+import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import PagamentoSucesso from "./pages/PagamentoSucesso";
 import PagamentoFalha from "./pages/PagamentoFalha";
 import PagamentoPendente from "./pages/PagamentoPendente";
@@ -33,6 +36,9 @@ const App = () => (
             <Route path="/saiba-mais" element={<SaibaMais />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/guias-instalacao" element={<GuiasInstalacao />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/termos-de-uso" element={<TermosUso />} />
+            <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
             <Route path="/pagamento/falha" element={<PagamentoFalha />} />
