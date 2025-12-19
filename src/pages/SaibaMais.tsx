@@ -70,7 +70,7 @@ const SaibaMais = () => {
     {
       icon: Wifi,
       title: 'Multi-Dispositivo',
-      description: 'Use em vários dispositivos simultaneamente com uma única assinatura.'
+      description: 'Use em vários dispositivos com uma única assinatura, mas para uso em diferentes aplicativos simultaneamente haverá cobrança adicional.'
     }
   ];
 
