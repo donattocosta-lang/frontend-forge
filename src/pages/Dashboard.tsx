@@ -23,7 +23,8 @@ import {
   Save,
   Eye,
   EyeOff,
-  Lock
+  Lock,
+  BookOpen
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -277,6 +278,17 @@ const Dashboard = () => {
                     </div>
                     <ChevronRight className="w-4 h-4" />
                   </button>
+
+                  <Link
+                    to="/guias-instalacao"
+                    className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-muted"
+                  >
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="w-5 h-5" />
+                      <span>Guias de Instalação</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
                 </nav>
               </div>
 
