@@ -6,12 +6,12 @@ import { Tv, Shield, Clock, Headphones, Play, Zap, Star, ChevronRight } from 'lu
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { planoService, pedidoService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const [planos, setPlanos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,10 +23,11 @@ const Index = () => {
 
   const loadPlanos = async () => {
     try {
-      const data = await api.getPlanos();
+      const data = await planoService.getPlanos();
       setPlanos(data);
     } catch (error) {
-      // Mock data for demo
+      console.error('Error loading plans:', error);
+      // Mock data for demo if no plans exist
       setPlanos([
         { id: '1', nome_comercial: 'Plano Mensal', descricao: 'Acesso completo por 30 dias', duracao_dias: 30, preco: 29.90 },
         { id: '2', nome_comercial: 'Plano Trimestral', descricao: 'Acesso completo por 90 dias - Economize 15%', duracao_dias: 90, preco: 74.90 },
@@ -39,7 +40,7 @@ const Index = () => {
   };
 
   const handleSelectPlan = async (planId: string) => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       toast({
         title: "Faça login para continuar",
         description: "Você precisa estar logado para contratar um plano.",
@@ -48,14 +49,16 @@ const Index = () => {
       return;
     }
 
+    const plano = planos.find(p => p.id === planId);
+    if (!plano) return;
+
     setSelectedPlan(planId);
     try {
-      const pedido = await api.criarPedido(planId);
+      await pedidoService.createPedido(user.id, planId, plano.preco);
       toast({
         title: "Pedido criado!",
-        description: "Redirecionando para pagamento...",
+        description: "Seu pedido foi criado com sucesso.",
       });
-      // Here you would redirect to Mercado Pago
       navigate('/dashboard');
     } catch (error: any) {
       toast({

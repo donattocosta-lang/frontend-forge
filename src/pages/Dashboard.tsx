@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
+import { pedidoService, notificacaoService, solicitacaoTesteService, authService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { 
   User, 
@@ -35,7 +35,7 @@ import { ptBR } from 'date-fns/locale';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated, isLoading, updateUser } = useAuth();
+  const { user, profile, logout, isAuthenticated, isLoading, updateProfile } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('pedidos');
   const [pedidos, setPedidos] = useState<any[]>([]);
@@ -55,12 +55,10 @@ const Dashboard = () => {
   // Password change state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordData, setPasswordData] = useState({
-    senha_atual: '',
     nova_senha: '',
     confirmar_senha: ''
   });
   const [showPasswords, setShowPasswords] = useState({
-    atual: false,
     nova: false,
     confirmar: false
   });
@@ -73,58 +71,58 @@ const Dashboard = () => {
   }, [isAuthenticated, isLoading, navigate]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user) {
       loadData();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
-    if (user) {
+    if (profile) {
       setProfileData({
-        nome_completo: user.nome_completo || '',
-        telefone: user.telefone || ''
+        nome_completo: profile.nome_completo || '',
+        telefone: profile.telefone || ''
       });
     }
-  }, [user]);
+  }, [profile]);
 
   const loadData = async () => {
+    if (!user) return;
+    
     setLoading(true);
     try {
       const [pedidosData, notificacoesData, solicitacoesTesteData] = await Promise.all([
-        api.getPedidos().catch(() => []),
-        api.getNotificacoes().catch(() => []),
-        api.getSolicitacoesTeste().catch(() => []),
+        pedidoService.getPedidos(user.id).catch(() => []),
+        notificacaoService.getNotificacoes(user.id).catch(() => []),
+        solicitacaoTesteService.getSolicitacoes(user.id).catch(() => []),
       ]);
-      setPedidos(pedidosData);
+      
+      // Format pedidos for display
+      const formattedPedidos = pedidosData.map(p => ({
+        ...p,
+        plano_nome: p.plano?.nome_comercial || 'Plano',
+        data_compra: p.created_at
+      }));
+      
+      setPedidos(formattedPedidos);
       setNotificacoes(notificacoesData);
       setSolicitacoesTeste(solicitacoesTesteData);
     } catch (error) {
-      // Mock data for demo
-      setPedidos([
-        { 
-          id: '1', 
-          plano_nome: 'Plano Trimestral', 
-          valor: 74.90, 
-          status_pagamento: 'pago', 
-          status_acesso: 'ativo',
-          data_compra: new Date().toISOString(),
-          data_expiracao: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
-        },
-      ]);
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSolicitarTeste = async () => {
+    if (!user) return;
+    
     setSolicitandoTeste(true);
     try {
-      const response = await api.solicitarTesteGratis();
+      await solicitacaoTesteService.criarSolicitacao(user.id);
       toast({
         title: "Solicitação enviada!",
         description: "Sua solicitação de teste grátis foi enviada com sucesso. Aguarde a aprovação.",
       });
-      // Reload data to show new request
       loadData();
     } catch (error: any) {
       toast({
@@ -157,12 +155,7 @@ const Dashboard = () => {
 
     setSavingProfile(true);
     try {
-      await api.updateProfile(profileData);
-      updateUser({
-        ...user!,
-        nome_completo: profileData.nome_completo,
-        telefone: profileData.telefone
-      });
+      await updateProfile(profileData);
       setIsEditingProfile(false);
       toast({
         title: "Perfil atualizado",
@@ -180,7 +173,7 @@ const Dashboard = () => {
   };
 
   const handleChangePassword = async () => {
-    if (!passwordData.senha_atual || !passwordData.nova_senha || !passwordData.confirmar_senha) {
+    if (!passwordData.nova_senha || !passwordData.confirmar_senha) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos",
@@ -209,11 +202,8 @@ const Dashboard = () => {
 
     setSavingPassword(true);
     try {
-      await api.changePassword({
-        senha_atual: passwordData.senha_atual,
-        nova_senha: passwordData.nova_senha
-      });
-      setPasswordData({ senha_atual: '', nova_senha: '', confirmar_senha: '' });
+      await authService.updatePassword(passwordData.nova_senha);
+      setPasswordData({ nova_senha: '', confirmar_senha: '' });
       setIsChangingPassword(false);
       toast({
         title: "Senha alterada",
@@ -230,8 +220,8 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
     toast({
       title: "Logout realizado",
@@ -262,11 +252,11 @@ const Dashboard = () => {
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
                     <span className="text-2xl font-bold text-primary-foreground">
-                      {user?.nome_completo?.charAt(0) || 'U'}
+                      {profile?.nome_completo?.charAt(0) || 'U'}
                     </span>
                   </div>
                   <div>
-                    <h2 className="font-display font-semibold">{user?.nome_completo || 'Usuário'}</h2>
+                    <h2 className="font-display font-semibold">{profile?.nome_completo || 'Usuário'}</h2>
                     <p className="text-sm text-muted-foreground">{user?.email}</p>
                   </div>
                 </div>
@@ -551,8 +541,8 @@ const Dashboard = () => {
                             onClick={() => {
                               setIsEditingProfile(false);
                               setProfileData({
-                                nome_completo: user?.nome_completo || '',
-                                telefone: user?.telefone || ''
+                                nome_completo: profile?.nome_completo || '',
+                                telefone: profile?.telefone || ''
                               });
                             }}
                           >
@@ -564,7 +554,7 @@ const Dashboard = () => {
                       <div className="grid md:grid-cols-2 gap-6">
                         <div>
                           <label className="text-sm text-muted-foreground">Nome Completo</label>
-                          <p className="font-medium mt-1">{user?.nome_completo}</p>
+                          <p className="font-medium mt-1">{profile?.nome_completo}</p>
                         </div>
                         <div>
                           <label className="text-sm text-muted-foreground">E-mail</label>
@@ -572,11 +562,11 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <label className="text-sm text-muted-foreground">Telefone</label>
-                          <p className="font-medium mt-1">{user?.telefone || 'Não informado'}</p>
+                          <p className="font-medium mt-1">{profile?.telefone || 'Não informado'}</p>
                         </div>
                         <div>
                           <label className="text-sm text-muted-foreground">Status da Conta</label>
-                          <p className="font-medium mt-1 capitalize">{user?.status}</p>
+                          <p className="font-medium mt-1 capitalize">{profile?.status}</p>
                         </div>
                       </div>
                     )}
@@ -598,25 +588,6 @@ const Dashboard = () => {
 
                     {isChangingPassword && (
                       <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="senha_atual">Senha Atual</Label>
-                          <div className="relative">
-                            <Input 
-                              id="senha_atual"
-                              type={showPasswords.atual ? 'text' : 'password'}
-                              value={passwordData.senha_atual}
-                              onChange={(e) => setPasswordData({ ...passwordData, senha_atual: e.target.value })}
-                              className="mt-2 pr-10"
-                            />
-                            <button
-                              type="button"
-                              className="absolute right-3 top-1/2 -translate-y-1/2 mt-1 text-muted-foreground hover:text-foreground"
-                              onClick={() => setShowPasswords({ ...showPasswords, atual: !showPasswords.atual })}
-                            >
-                              {showPasswords.atual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                          </div>
-                        </div>
                         <div>
                           <Label htmlFor="nova_senha">Nova Senha</Label>
                           <div className="relative">
@@ -672,7 +643,7 @@ const Dashboard = () => {
                             variant="outline" 
                             onClick={() => {
                               setIsChangingPassword(false);
-                              setPasswordData({ senha_atual: '', nova_senha: '', confirmar_senha: '' });
+                              setPasswordData({ nova_senha: '', confirmar_senha: '' });
                             }}
                           >
                             Cancelar
