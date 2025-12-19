@@ -118,6 +118,11 @@ const Index = () => {
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-slide-up" style={{ animationDelay: '0.1s' }}>
               Milhares de canais, qualidade HD e 4K, suporte dedicado. Escolha o plano ideal e comece a assistir agora mesmo.
             </p>
+
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 mb-6 animate-slide-up" style={{ animationDelay: '0.15s' }}>
+              <Clock className="w-4 h-4 text-success" />
+              <span className="text-sm text-success font-medium">Teste grátis de 6 horas disponível!</span>
+            </div>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
               <Button variant="gradient" size="xl" onClick={() => document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })}>
