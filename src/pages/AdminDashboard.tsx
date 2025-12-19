@@ -58,11 +58,16 @@ const AdminDashboard = () => {
   });
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [planos, setPlanos] = useState<any[]>([]);
+  const [usuarios, setUsuarios] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userStatusFilter, setUserStatusFilter] = useState('todos');
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
+  const [selectedUsuario, setSelectedUsuario] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [planoDialogOpen, setPlanoDialogOpen] = useState(false);
+  const [usuarioDialogOpen, setUsuarioDialogOpen] = useState(false);
   const [editingPlano, setEditingPlano] = useState<any>(null);
 
   useEffect(() => {
@@ -140,6 +145,19 @@ const AdminDashboard = () => {
           ]);
         }
       }
+
+      if (activeTab === 'usuarios') {
+        const usuariosData = await api.getAdminUsuarios().catch(() => []);
+        if (usuariosData.length > 0) {
+          setUsuarios(usuariosData);
+        } else {
+          setUsuarios([
+            { id: '1', nome_completo: 'João Silva', email: 'joao@email.com', telefone: '(11) 99999-1111', status: 'ativa', role: 'cliente', created_at: new Date().toISOString() },
+            { id: '2', nome_completo: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 99999-2222', status: 'ativa', role: 'cliente', created_at: new Date(Date.now() - 86400000).toISOString() },
+            { id: '3', nome_completo: 'Pedro Oliveira', email: 'pedro@email.com', telefone: '(11) 99999-3333', status: 'suspensa', role: 'cliente', created_at: new Date(Date.now() - 172800000).toISOString() },
+          ]);
+        }
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -175,6 +193,34 @@ const AdminDashboard = () => {
     
     return matchesSearch && matchesStatus;
   });
+
+  const filteredUsuarios = usuarios.filter(usuario => {
+    const matchesSearch = 
+      usuario.nome_completo?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      usuario.email?.toLowerCase().includes(userSearchTerm.toLowerCase());
+    
+    const matchesStatus = userStatusFilter === 'todos' || usuario.status === userStatusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleUpdateUsuario = async (usuarioId: string, data: any) => {
+    try {
+      await api.updateAdminUsuario(usuarioId, data);
+      toast({
+        title: "Usuário atualizado",
+        description: "Os dados do usuário foram alterados com sucesso.",
+      });
+      loadData();
+      setUsuarioDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar usuário",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -461,10 +507,91 @@ const AdminDashboard = () => {
           {activeTab === 'usuarios' && (
             <div>
               <h1 className="font-display text-2xl font-bold mb-6">Gerenciar Usuários</h1>
-              <div className="text-center py-12 gradient-border rounded-2xl">
-                <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-display text-xl font-semibold mb-2">Em desenvolvimento</h3>
-                <p className="text-muted-foreground">Esta funcionalidade estará disponível em breve.</p>
+
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome ou email..."
+                    className="pl-10"
+                    value={userSearchTerm}
+                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Select value={userStatusFilter} onValueChange={setUserStatusFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="ativa">Ativos</SelectItem>
+                    <SelectItem value="suspensa">Suspensos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Users Table */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Nome</th>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">E-mail</th>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Telefone</th>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Status</th>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Cadastro</th>
+                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center">
+                            <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
+                          </td>
+                        </tr>
+                      ) : filteredUsuarios.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                            Nenhum usuário encontrado
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredUsuarios.map((usuario) => (
+                          <tr key={usuario.id} className="border-t border-border/50 hover:bg-muted/30">
+                            <td className="py-4 px-4 font-medium">{usuario.nome_completo}</td>
+                            <td className="py-4 px-4 text-muted-foreground">{usuario.email}</td>
+                            <td className="py-4 px-4 text-muted-foreground">{usuario.telefone || '-'}</td>
+                            <td className="py-4 px-4">
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                usuario.status === 'ativa' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
+                              }`}>
+                                {usuario.status === 'ativa' ? 'Ativo' : 'Suspenso'}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 text-sm">
+                              {format(new Date(usuario.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                            </td>
+                            <td className="py-4 px-4">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedUsuario({ ...usuario });
+                                  setUsuarioDialogOpen(true);
+                                }}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -603,6 +730,78 @@ const AdminDashboard = () => {
               {editingPlano ? 'Salvar Alterações' : 'Criar Plano'}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Usuario Edit Dialog */}
+      <Dialog open={usuarioDialogOpen} onOpenChange={setUsuarioDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+          </DialogHeader>
+          
+          {selectedUsuario && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="user_nome">Nome Completo</Label>
+                <Input 
+                  id="user_nome" 
+                  value={selectedUsuario.nome_completo}
+                  onChange={(e) => setSelectedUsuario({ ...selectedUsuario, nome_completo: e.target.value })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>E-mail</Label>
+                <Input 
+                  value={selectedUsuario.email}
+                  disabled
+                  className="mt-2 bg-muted"
+                />
+                <p className="text-xs text-muted-foreground mt-1">O e-mail não pode ser alterado</p>
+              </div>
+              <div>
+                <Label htmlFor="user_telefone">Telefone</Label>
+                <Input 
+                  id="user_telefone"
+                  value={selectedUsuario.telefone || ''}
+                  onChange={(e) => setSelectedUsuario({ ...selectedUsuario, telefone: e.target.value })}
+                  placeholder="(00) 00000-0000"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Status da Conta</Label>
+                <Select 
+                  value={selectedUsuario.status}
+                  onValueChange={(value) => setSelectedUsuario({ ...selectedUsuario, status: value })}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativa">Ativa</SelectItem>
+                    <SelectItem value="suspensa">Suspensa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  variant="gradient" 
+                  className="flex-1"
+                  onClick={() => handleUpdateUsuario(selectedUsuario.id, {
+                    nome_completo: selectedUsuario.nome_completo,
+                    telefone: selectedUsuario.telefone,
+                    status: selectedUsuario.status
+                  })}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Salvar Alterações
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
