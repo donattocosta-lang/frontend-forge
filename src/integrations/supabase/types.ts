@@ -14,6 +14,146 @@ export type Database = {
   }
   public: {
     Tables: {
+      notificacoes: {
+        Row: {
+          created_at: string
+          id: string
+          lida: boolean
+          mensagem: string
+          tipo: string
+          titulo: string
+          usuario_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lida?: boolean
+          mensagem: string
+          tipo?: string
+          titulo: string
+          usuario_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lida?: boolean
+          mensagem?: string
+          tipo?: string
+          titulo?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos: {
+        Row: {
+          created_at: string
+          data_expiracao: string | null
+          id: string
+          mercadopago_payment_id: string | null
+          mercadopago_preference_id: string | null
+          observacoes_admin: string | null
+          plano_id: string
+          status_acesso: string
+          status_pagamento: string
+          updated_at: string
+          usuario_id: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          data_expiracao?: string | null
+          id?: string
+          mercadopago_payment_id?: string | null
+          mercadopago_preference_id?: string | null
+          observacoes_admin?: string | null
+          plano_id: string
+          status_acesso?: string
+          status_pagamento?: string
+          updated_at?: string
+          usuario_id: string
+          valor: number
+        }
+        Update: {
+          created_at?: string
+          data_expiracao?: string | null
+          id?: string
+          mercadopago_payment_id?: string | null
+          mercadopago_preference_id?: string | null
+          observacoes_admin?: string | null
+          plano_id?: string
+          status_acesso?: string
+          status_pagamento?: string
+          updated_at?: string
+          usuario_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          duracao_dias: number
+          id: string
+          nome: string
+          nome_comercial: string
+          preco: number
+          recursos: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          duracao_dias?: number
+          id?: string
+          nome: string
+          nome_comercial: string
+          preco: number
+          recursos?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          duracao_dias?: number
+          id?: string
+          nome?: string
+          nome_comercial?: string
+          preco?: number
+          recursos?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       solicitacoes_teste: {
         Row: {
           aprovado_em: string | null
@@ -48,7 +188,15 @@ export type Database = {
           updated_at?: string
           usuario_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_teste_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
