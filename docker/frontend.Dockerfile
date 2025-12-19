@@ -18,7 +18,7 @@ ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
 
 # Copy package files
-COPY package*.json ./
+COPY package.json ./
 
 # Install dependencies (using npm install since project uses bun.lockb)
 RUN npm install --legacy-peer-deps
