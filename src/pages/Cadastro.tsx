@@ -56,14 +56,22 @@ const Cadastro = () => {
       
       toast({
         title: "Conta criada com sucesso!",
-        description: "Faça login para continuar.",
+        description: "Você já pode fazer login.",
       });
       
       navigate('/login');
     } catch (error: any) {
+      let message = "Erro ao criar conta";
+      
+      if (error.message?.includes('User already registered')) {
+        message = "Este email já está cadastrado";
+      } else if (error.message?.includes('Password should be')) {
+        message = "A senha deve ter pelo menos 6 caracteres";
+      }
+      
       toast({
         title: "Erro no cadastro",
-        description: error.message || "Erro ao criar conta",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -172,9 +180,9 @@ const Cadastro = () => {
                 <input type="checkbox" className="mt-1 rounded border-border" required />
                 <span className="text-sm text-muted-foreground">
                   Li e aceito os{' '}
-                  <a href="#" className="text-primary hover:underline">Termos de Uso</a>
+                  <Link to="/termos-de-uso" className="text-primary hover:underline">Termos de Uso</Link>
                   {' '}e{' '}
-                  <a href="#" className="text-primary hover:underline">Política de Privacidade</a>
+                  <Link to="/politica-de-privacidade" className="text-primary hover:underline">Política de Privacidade</Link>
                 </span>
               </div>
 

@@ -5,18 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
+import { 
+  pedidoService, 
+  planoService, 
+  usuarioService, 
+  solicitacaoTesteService, 
+  estatisticasService 
+} from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { 
   LayoutDashboard, 
   ShoppingBag, 
   Package, 
   Users, 
-  Bell,
-  Settings,
   ChevronRight,
   Search,
-  Filter,
   DollarSign,
   Clock,
   CheckCircle,
@@ -99,87 +102,42 @@ const AdminDashboard = () => {
     setLoading(true);
     try {
       if (activeTab === 'dashboard') {
-        const statsData = await api.getEstatisticas().catch(() => null);
-        const testesData = await api.getAdminSolicitacoesTeste().catch(() => []);
-        const testesPendentes = testesData.filter((t: any) => t.status === 'pendente').length;
+        const statsData = await estatisticasService.getEstatisticas();
+        setStats(statsData);
         
-        if (statsData) {
-          setStats({ ...statsData, testes_pendentes: testesPendentes });
-        } else {
-          setStats({
-            total_vendas: 156,
-            receita_total: 12450.00,
-            pagamentos_pendentes: 8,
-            acessos_pendentes: 5,
-            testes_pendentes: testesPendentes,
-          });
-        }
+        const pedidosData = await pedidoService.getAllPedidos();
+        setPedidos(pedidosData);
+        
+        const testesData = await solicitacaoTesteService.getAllSolicitacoes();
         setSolicitacoesTeste(testesData);
       }
 
-      if (activeTab === 'pedidos' || activeTab === 'dashboard') {
-        const pedidosData = await api.getAdminPedidos().catch(() => []);
-        if (pedidosData.length > 0) {
-          setPedidos(pedidosData);
-        } else {
-          setPedidos([
-            { 
-              id: '1', 
-              plano_nome: 'Plano Trimestral',
-              cliente_nome: 'João Silva',
-              cliente_email: 'joao@email.com',
-              valor: 74.90, 
-              status_pagamento: 'pago', 
-              status_acesso: 'pendente',
-              created_at: new Date().toISOString()
-            },
-            { 
-              id: '2', 
-              plano_nome: 'Plano Mensal',
-              cliente_nome: 'Maria Santos',
-              cliente_email: 'maria@email.com',
-              valor: 29.90, 
-              status_pagamento: 'aguardando_pagamento', 
-              status_acesso: 'pendente',
-              created_at: new Date(Date.now() - 86400000).toISOString()
-            },
-          ]);
-        }
+      if (activeTab === 'pedidos') {
+        const pedidosData = await pedidoService.getAllPedidos();
+        setPedidos(pedidosData);
       }
 
       if (activeTab === 'planos') {
-        const planosData = await api.getAdminPlanos().catch(() => []);
-        if (planosData.length > 0) {
-          setPlanos(planosData);
-        } else {
-          setPlanos([
-            { id: '1', nome_comercial: 'Plano Mensal', duracao_dias: 30, preco: 29.90, status: 'ativo' },
-            { id: '2', nome_comercial: 'Plano Trimestral', duracao_dias: 90, preco: 74.90, status: 'ativo' },
-            { id: '3', nome_comercial: 'Plano Semestral', duracao_dias: 180, preco: 134.90, status: 'ativo' },
-            { id: '4', nome_comercial: 'Plano Anual', duracao_dias: 365, preco: 239.90, status: 'ativo' },
-          ]);
-        }
+        const planosData = await planoService.getAllPlanos();
+        setPlanos(planosData);
       }
 
       if (activeTab === 'usuarios') {
-        const usuariosData = await api.getAdminUsuarios().catch(() => []);
-        if (usuariosData.length > 0) {
-          setUsuarios(usuariosData);
-        } else {
-          setUsuarios([
-            { id: '1', nome_completo: 'João Silva', email: 'joao@email.com', telefone: '(11) 99999-1111', status: 'ativa', role: 'cliente', created_at: new Date().toISOString() },
-            { id: '2', nome_completo: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 99999-2222', status: 'ativa', role: 'cliente', created_at: new Date(Date.now() - 86400000).toISOString() },
-            { id: '3', nome_completo: 'Pedro Oliveira', email: 'pedro@email.com', telefone: '(11) 99999-3333', status: 'suspensa', role: 'cliente', created_at: new Date(Date.now() - 172800000).toISOString() },
-          ]);
-        }
+        const usuariosData = await usuarioService.getAllUsuarios();
+        setUsuarios(usuariosData);
       }
 
       if (activeTab === 'testes') {
-        const testesData = await api.getAdminSolicitacoesTeste().catch(() => []);
+        const testesData = await solicitacaoTesteService.getAllSolicitacoes();
         setSolicitacoesTeste(testesData);
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar dados",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -187,7 +145,7 @@ const AdminDashboard = () => {
 
   const handleUpdatePedido = async (pedidoId: string, data: any) => {
     try {
-      await api.updatePedido(pedidoId, data);
+      await pedidoService.updatePedido(pedidoId, data);
       toast({
         title: "Pedido atualizado",
         description: "O status do pedido foi alterado com sucesso.",
@@ -236,9 +194,11 @@ const AdminDashboard = () => {
   });
 
   const handleProcessarTeste = async (testeId: string, status: 'aprovado' | 'rejeitado', observacoes: string) => {
+    if (!user) return;
+    
     setProcessingTeste(true);
     try {
-      await api.processarSolicitacaoTeste(testeId, { status, observacoes_admin: observacoes });
+      await solicitacaoTesteService.processarSolicitacao(testeId, user.id, status, observacoes);
       toast({
         title: status === 'aprovado' ? "Teste aprovado" : "Teste rejeitado",
         description: status === 'aprovado' 
@@ -261,7 +221,7 @@ const AdminDashboard = () => {
 
   const handleUpdateUsuario = async (usuarioId: string, data: any) => {
     try {
-      await api.updateAdminUsuario(usuarioId, data);
+      await usuarioService.updateUsuario(usuarioId, data);
       toast({
         title: "Usuário atualizado",
         description: "Os dados do usuário foram alterados com sucesso.",
@@ -325,487 +285,420 @@ const AdminDashboard = () => {
 
         {/* Main Content */}
         <main className="flex-1 p-6 lg:ml-64">
-          {/* Dashboard View */}
-          {activeTab === 'dashboard' && (
-            <div>
-              <h1 className="font-display text-2xl font-bold mb-6">Dashboard</h1>
-
-              {/* Stats Grid */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div className="p-6 rounded-2xl bg-card border border-border">
-                  <div className="flex items-center justify-between mb-4">
-                    <DollarSign className="w-8 h-8 text-primary" />
-                    <span className="text-xs text-success bg-success/20 px-2 py-1 rounded-full">+12%</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Receita Total</p>
-                  <p className="font-display text-2xl font-bold">
-                    R$ {stats.receita_total.toFixed(2).replace('.', ',')}
-                  </p>
-                </div>
-
-                <div className="p-6 rounded-2xl bg-card border border-border">
-                  <div className="flex items-center justify-between mb-4">
-                    <ShoppingBag className="w-8 h-8 text-secondary" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">Total de Vendas</p>
-                  <p className="font-display text-2xl font-bold">{stats.total_vendas}</p>
-                </div>
-
-                <div className="p-6 rounded-2xl bg-card border border-border">
-                  <div className="flex items-center justify-between mb-4">
-                    <Clock className="w-8 h-8 text-warning" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">Pagamentos Pendentes</p>
-                  <p className="font-display text-2xl font-bold">{stats.pagamentos_pendentes}</p>
-                </div>
-
-                <div className="p-6 rounded-2xl bg-card border border-border">
-                  <div className="flex items-center justify-between mb-4">
-                    <AlertCircle className="w-8 h-8 text-destructive" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">Acessos Pendentes</p>
-                  <p className="font-display text-2xl font-bold">{stats.acessos_pendentes}</p>
-                </div>
-
-                <div className="p-6 rounded-2xl bg-card border border-border">
-                  <div className="flex items-center justify-between mb-4">
-                    <Gift className="w-8 h-8 text-success" />
-                    {stats.testes_pendentes > 0 && (
-                      <span className="text-xs text-success bg-success/20 px-2 py-1 rounded-full">Novo</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">Testes Pendentes</p>
-                  <p className="font-display text-2xl font-bold">{stats.testes_pendentes}</p>
-                </div>
-              </div>
-
-              {/* Recent Orders */}
-              <div className="gradient-border p-6 rounded-2xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Pedidos Recentes</h2>
-                  <Button variant="ghost" size="sm" onClick={() => setActiveTab('pedidos')}>
-                    Ver todos <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plano</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Valor</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Pagamento</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acesso</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pedidos.slice(0, 5).map((pedido) => (
-                        <tr key={pedido.id} className="border-b border-border/50">
-                          <td className="py-3 px-4">
-                            <div>
-                              <p className="font-medium">{pedido.cliente_nome}</p>
-                              <p className="text-sm text-muted-foreground">{pedido.cliente_email}</p>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">{pedido.plano_nome}</td>
-                          <td className="py-3 px-4">R$ {pedido.valor.toFixed(2).replace('.', ',')}</td>
-                          <td className="py-3 px-4">
-                            <StatusBadge status={pedido.status_pagamento} type="pagamento" />
-                          </td>
-                          <td className="py-3 px-4">
-                            <StatusBadge status={pedido.status_acesso} type="acesso" />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          )}
+          ) : (
+            <>
+              {/* Dashboard View */}
+              {activeTab === 'dashboard' && (
+                <div>
+                  <h1 className="font-display text-2xl font-bold mb-6">Dashboard</h1>
 
-          {/* Pedidos View */}
-          {activeTab === 'pedidos' && (
-            <div>
-              <h1 className="font-display text-2xl font-bold mb-6">Gerenciar Pedidos</h1>
-
-              {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por nome, email ou ID..."
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="pago">Pagos</SelectItem>
-                    <SelectItem value="aguardando_pagamento">Aguardando</SelectItem>
-                    <SelectItem value="cancelado">Cancelados</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Orders Table */}
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">ID</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Plano</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Valor</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Pagamento</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Acesso</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Data</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loading ? (
-                        <tr>
-                          <td colSpan={8} className="py-8 text-center">
-                            <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                          </td>
-                        </tr>
-                      ) : filteredPedidos.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} className="py-8 text-center text-muted-foreground">
-                            Nenhum pedido encontrado
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredPedidos.map((pedido) => (
-                          <tr key={pedido.id} className="border-t border-border/50 hover:bg-muted/30">
-                            <td className="py-4 px-4 font-mono text-sm">#{pedido.id.slice(0, 8)}</td>
-                            <td className="py-4 px-4">
-                              <div>
-                                <p className="font-medium">{pedido.cliente_nome}</p>
-                                <p className="text-sm text-muted-foreground">{pedido.cliente_email}</p>
-                              </div>
-                            </td>
-                            <td className="py-4 px-4">{pedido.plano_nome}</td>
-                            <td className="py-4 px-4">R$ {pedido.valor.toFixed(2).replace('.', ',')}</td>
-                            <td className="py-4 px-4">
-                              <StatusBadge status={pedido.status_pagamento} type="pagamento" />
-                            </td>
-                            <td className="py-4 px-4">
-                              <StatusBadge status={pedido.status_acesso} type="acesso" />
-                            </td>
-                            <td className="py-4 px-4 text-sm">
-                              {format(new Date(pedido.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                            </td>
-                            <td className="py-4 px-4">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedPedido(pedido);
-                                  setDialogOpen(true);
-                                }}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Planos View */}
-          {activeTab === 'planos' && (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h1 className="font-display text-2xl font-bold">Gerenciar Planos</h1>
-                <Button variant="gradient" onClick={() => {
-                  setEditingPlano(null);
-                  setPlanoDialogOpen(true);
-                }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Novo Plano
-                </Button>
-              </div>
-
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {planos.map((plano) => (
-                  <div key={plano.id} className="p-6 rounded-2xl bg-card border border-border">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="font-display font-semibold text-lg">{plano.nome_comercial}</h3>
-                        <p className="text-sm text-muted-foreground">{plano.duracao_dias} dias</p>
+                  {/* Stats Grid */}
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                    <div className="p-6 rounded-2xl bg-card border border-border">
+                      <div className="flex items-center justify-between mb-4">
+                        <DollarSign className="w-8 h-8 text-primary" />
                       </div>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        plano.status === 'ativo' ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {plano.status}
-                      </span>
+                      <p className="text-sm text-muted-foreground">Receita Total</p>
+                      <p className="font-display text-2xl font-bold">
+                        R$ {stats.receita_total.toFixed(2).replace('.', ',')}
+                      </p>
                     </div>
-                    <p className="font-display text-3xl font-bold gradient-text mb-4">
-                      R$ {plano.preco.toFixed(2).replace('.', ',')}
-                    </p>
-                    <Button variant="outline" size="sm" className="w-full" onClick={() => {
-                      setEditingPlano(plano);
-                      setPlanoDialogOpen(true);
-                    }}>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Editar
-                    </Button>
+
+                    <div className="p-6 rounded-2xl bg-card border border-border">
+                      <div className="flex items-center justify-between mb-4">
+                        <ShoppingBag className="w-8 h-8 text-secondary" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Total de Vendas</p>
+                      <p className="font-display text-2xl font-bold">{stats.total_vendas}</p>
+                    </div>
+
+                    <div className="p-6 rounded-2xl bg-card border border-border">
+                      <div className="flex items-center justify-between mb-4">
+                        <Clock className="w-8 h-8 text-warning" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Pagamentos Pendentes</p>
+                      <p className="font-display text-2xl font-bold">{stats.pagamentos_pendentes}</p>
+                    </div>
+
+                    <div className="p-6 rounded-2xl bg-card border border-border">
+                      <div className="flex items-center justify-between mb-4">
+                        <AlertCircle className="w-8 h-8 text-destructive" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Acessos Pendentes</p>
+                      <p className="font-display text-2xl font-bold">{stats.acessos_pendentes}</p>
+                    </div>
+
+                    <div className="p-6 rounded-2xl bg-card border border-border">
+                      <div className="flex items-center justify-between mb-4">
+                        <Gift className="w-8 h-8 text-success" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Testes Pendentes</p>
+                      <p className="font-display text-2xl font-bold">{stats.testes_pendentes}</p>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
 
-          {/* Usuarios View */}
-          {activeTab === 'usuarios' && (
-            <div>
-              <h1 className="font-display text-2xl font-bold mb-6">Gerenciar Usuários</h1>
+                  {/* Recent Orders */}
+                  <div className="gradient-border p-6 rounded-2xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="font-display text-xl font-semibold">Pedidos Recentes</h2>
+                      <Button variant="ghost" size="sm" onClick={() => setActiveTab('pedidos')}>
+                        Ver todos <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
 
-              {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por nome ou email..."
-                    className="pl-10"
-                    value={userSearchTerm}
-                    onChange={(e) => setUserSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Select value={userStatusFilter} onValueChange={setUserStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="ativa">Ativos</SelectItem>
-                    <SelectItem value="suspensa">Suspensos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Users Table */}
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Nome</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">E-mail</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Telefone</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Status</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Cadastro</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loading ? (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center">
-                            <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                          </td>
-                        </tr>
-                      ) : filteredUsuarios.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center text-muted-foreground">
-                            Nenhum usuário encontrado
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredUsuarios.map((usuario) => (
-                          <tr key={usuario.id} className="border-t border-border/50 hover:bg-muted/30">
-                            <td className="py-4 px-4 font-medium">{usuario.nome_completo}</td>
-                            <td className="py-4 px-4 text-muted-foreground">{usuario.email}</td>
-                            <td className="py-4 px-4 text-muted-foreground">{usuario.telefone || '-'}</td>
-                            <td className="py-4 px-4">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                usuario.status === 'ativa' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
-                              }`}>
-                                {usuario.status === 'ativa' ? 'Ativo' : 'Suspenso'}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 text-sm">
-                              {format(new Date(usuario.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                            </td>
-                            <td className="py-4 px-4">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedUsuario({ ...usuario });
-                                  setUsuarioDialogOpen(true);
-                                }}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plano</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Valor</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Pagamento</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acesso</th>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {pedidos.slice(0, 5).map((pedido) => (
+                            <tr key={pedido.id} className="border-b border-border/50">
+                              <td className="py-3 px-4">
+                                <div>
+                                  <p className="font-medium">{pedido.cliente_nome || 'N/A'}</p>
+                                  <p className="text-sm text-muted-foreground">{pedido.cliente_email || 'N/A'}</p>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">{pedido.plano_nome || 'N/A'}</td>
+                              <td className="py-3 px-4">R$ {pedido.valor.toFixed(2).replace('.', ',')}</td>
+                              <td className="py-3 px-4">
+                                <StatusBadge status={pedido.status_pagamento} type="pagamento" />
+                              </td>
+                              <td className="py-3 px-4">
+                                <StatusBadge status={pedido.status_acesso} type="acesso" />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {/* Testes Grátis View */}
-          {activeTab === 'testes' && (
-            <div>
-              <h1 className="font-display text-2xl font-bold mb-6">Solicitações de Teste Grátis</h1>
+              {/* Pedidos View */}
+              {activeTab === 'pedidos' && (
+                <div>
+                  <h1 className="font-display text-2xl font-bold mb-6">Gerenciar Pedidos</h1>
 
-              {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por nome, email ou ID..."
-                    className="pl-10"
-                    value={testeSearchTerm}
-                    onChange={(e) => setTesteSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Select value={testeStatusFilter} onValueChange={setTesteStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="pendente">Pendentes</SelectItem>
-                    <SelectItem value="aprovado">Aprovados</SelectItem>
-                    <SelectItem value="rejeitado">Rejeitados</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* Filters */}
+                  <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por nome, email ou ID..."
+                        className="pl-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-full sm:w-48">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="pago">Pago</SelectItem>
+                        <SelectItem value="aguardando_pagamento">Pendente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              {/* Testes Table */}
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">ID</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Status</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Observações</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Data</th>
-                        <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loading ? (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center">
-                            <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                          </td>
-                        </tr>
-                      ) : filteredTestes.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center text-muted-foreground">
-                            Nenhuma solicitação encontrada
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredTestes.map((teste) => (
-                          <tr key={teste.id} className="border-t border-border/50 hover:bg-muted/30">
-                            <td className="py-4 px-4 font-mono text-sm">#{teste.id.slice(0, 8)}</td>
-                            <td className="py-4 px-4">
-                              <div>
-                                <p className="font-medium">{teste.usuario_nome || 'Usuário'}</p>
-                                <p className="text-sm text-muted-foreground">{teste.usuario_email || '-'}</p>
-                              </div>
-                            </td>
-                            <td className="py-4 px-4">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                teste.status === 'pendente' ? 'bg-warning/20 text-warning' :
-                                teste.status === 'aprovado' ? 'bg-success/20 text-success' :
-                                'bg-destructive/20 text-destructive'
-                              }`}>
-                                {teste.status === 'pendente' ? 'Pendente' :
-                                 teste.status === 'aprovado' ? 'Aprovado' : 'Rejeitado'}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 text-sm text-muted-foreground max-w-xs truncate">
-                              {teste.observacoes || '-'}
-                            </td>
-                            <td className="py-4 px-4 text-sm">
-                              {format(new Date(teste.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                            </td>
-                            <td className="py-4 px-4">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedTeste({ ...teste, observacoes_admin: teste.observacoes_admin || '' });
-                                  setTesteDialogOpen(true);
-                                }}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </td>
+                  {/* Orders Table */}
+                  <div className="gradient-border rounded-2xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Cliente</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Plano</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Valor</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Data</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Pagamento</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Acesso</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Ações</th>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {filteredPedidos.map((pedido) => (
+                            <tr key={pedido.id} className="border-b border-border/50 hover:bg-muted/30">
+                              <td className="py-4 px-4">
+                                <div>
+                                  <p className="font-medium">{pedido.cliente_nome || 'N/A'}</p>
+                                  <p className="text-sm text-muted-foreground">{pedido.cliente_email || 'N/A'}</p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">{pedido.plano_nome || 'N/A'}</td>
+                              <td className="py-4 px-4">R$ {pedido.valor.toFixed(2).replace('.', ',')}</td>
+                              <td className="py-4 px-4">
+                                {format(new Date(pedido.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                              </td>
+                              <td className="py-4 px-4">
+                                <StatusBadge status={pedido.status_pagamento} type="pagamento" />
+                              </td>
+                              <td className="py-4 px-4">
+                                <StatusBadge status={pedido.status_acesso} type="acesso" />
+                              </td>
+                              <td className="py-4 px-4">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedPedido(pedido);
+                                    setDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              )}
+
+              {/* Planos View */}
+              {activeTab === 'planos' && (
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h1 className="font-display text-2xl font-bold">Gerenciar Planos</h1>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {planos.map((plano) => (
+                      <div key={plano.id} className="p-6 rounded-2xl bg-card border border-border">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-display font-semibold">{plano.nome_comercial}</h3>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            plano.ativo ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {plano.ativo ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                        <p className="text-2xl font-bold mb-2">
+                          R$ {plano.preco.toFixed(2).replace('.', ',')}
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {plano.duracao_dias} dias
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {plano.descricao || 'Sem descrição'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Usuários View */}
+              {activeTab === 'usuarios' && (
+                <div>
+                  <h1 className="font-display text-2xl font-bold mb-6">Gerenciar Usuários</h1>
+
+                  {/* Filters */}
+                  <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por nome ou email..."
+                        className="pl-10"
+                        value={userSearchTerm}
+                        onChange={(e) => setUserSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <Select value={userStatusFilter} onValueChange={setUserStatusFilter}>
+                      <SelectTrigger className="w-full sm:w-48">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="ativa">Ativa</SelectItem>
+                        <SelectItem value="suspensa">Suspensa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Users Table */}
+                  <div className="gradient-border rounded-2xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Nome</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Email</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Telefone</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Status</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Cadastro</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredUsuarios.map((usuario) => (
+                            <tr key={usuario.id} className="border-b border-border/50 hover:bg-muted/30">
+                              <td className="py-4 px-4 font-medium">{usuario.nome_completo}</td>
+                              <td className="py-4 px-4">{usuario.email}</td>
+                              <td className="py-4 px-4">{usuario.telefone || 'N/A'}</td>
+                              <td className="py-4 px-4">
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  usuario.status === 'ativa' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
+                                }`}>
+                                  {usuario.status}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                {format(new Date(usuario.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                              </td>
+                              <td className="py-4 px-4">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedUsuario(usuario);
+                                    setUsuarioDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Testes View */}
+              {activeTab === 'testes' && (
+                <div>
+                  <h1 className="font-display text-2xl font-bold mb-6">Solicitações de Teste Grátis</h1>
+
+                  {/* Filters */}
+                  <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por nome ou email..."
+                        className="pl-10"
+                        value={testeSearchTerm}
+                        onChange={(e) => setTesteSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <Select value={testeStatusFilter} onValueChange={setTesteStatusFilter}>
+                      <SelectTrigger className="w-full sm:w-48">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="pendente">Pendente</SelectItem>
+                        <SelectItem value="aprovado">Aprovado</SelectItem>
+                        <SelectItem value="rejeitado">Rejeitado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Tests Table */}
+                  <div className="gradient-border rounded-2xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Cliente</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Data</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Status</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredTestes.map((teste) => (
+                            <tr key={teste.id} className="border-b border-border/50 hover:bg-muted/30">
+                              <td className="py-4 px-4">
+                                <div>
+                                  <p className="font-medium">{teste.usuario_nome || 'N/A'}</p>
+                                  <p className="text-sm text-muted-foreground">{teste.usuario_email || 'N/A'}</p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                {format(new Date(teste.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  teste.status === 'aprovado' ? 'bg-success/20 text-success' :
+                                  teste.status === 'rejeitado' ? 'bg-destructive/20 text-destructive' :
+                                  'bg-warning/20 text-warning'
+                                }`}>
+                                  {teste.status}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                {teste.status === 'pendente' && (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-success hover:text-success"
+                                      onClick={() => handleProcessarTeste(teste.id, 'aprovado', '')}
+                                      disabled={processingTeste}
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() => handleProcessarTeste(teste.id, 'rejeitado', '')}
+                                      disabled={processingTeste}
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>
 
-      {/* Pedido Detail Dialog */}
+      {/* Edit Pedido Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Detalhes do Pedido</DialogTitle>
+            <DialogTitle>Editar Pedido</DialogTitle>
           </DialogHeader>
-          
           {selectedPedido && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Cliente</Label>
-                  <p className="font-medium">{selectedPedido.cliente_nome}</p>
-                  <p className="text-sm text-muted-foreground">{selectedPedido.cliente_email}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Plano</Label>
-                  <p className="font-medium">{selectedPedido.plano_nome}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Valor</Label>
-                  <p className="font-medium">R$ {selectedPedido.valor.toFixed(2).replace('.', ',')}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Status Pagamento</Label>
-                  <div className="mt-1">
-                    <StatusBadge status={selectedPedido.status_pagamento} type="pagamento" />
-                  </div>
-                </div>
-              </div>
-
               <div>
-                <Label className="text-muted-foreground">Status do Acesso</Label>
-                <Select 
+                <Label>Cliente</Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {selectedPedido.cliente_nome} ({selectedPedido.cliente_email})
+                </p>
+              </div>
+              <div>
+                <Label>Status de Acesso</Label>
+                <Select
                   value={selectedPedido.status_acesso}
                   onValueChange={(value) => setSelectedPedido({ ...selectedPedido, status_acesso: value })}
                 >
@@ -814,35 +707,32 @@ const AdminDashboard = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pendente">Pendente</SelectItem>
-                    <SelectItem value="acesso_enviado">Acesso Enviado</SelectItem>
                     <SelectItem value="ativo">Ativo</SelectItem>
-                    <SelectItem value="expirado">Expirado</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
-                <Label htmlFor="observacoes">Observações</Label>
-                <Textarea 
-                  id="observacoes"
-                  placeholder="Adicione observações sobre o pedido..."
+                <Label>Observações</Label>
+                <Textarea
                   value={selectedPedido.observacoes_admin || ''}
                   onChange={(e) => setSelectedPedido({ ...selectedPedido, observacoes_admin: e.target.value })}
                   className="mt-2"
+                  placeholder="Observações internas..."
                 />
               </div>
-
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  variant="gradient" 
-                  className="flex-1"
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="gradient"
                   onClick={() => handleUpdatePedido(selectedPedido.id, {
                     status_acesso: selectedPedido.status_acesso,
                     observacoes_admin: selectedPedido.observacoes_admin
                   })}
                 >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Salvar Alterações
+                  Salvar
                 </Button>
               </div>
             </div>
@@ -850,100 +740,33 @@ const AdminDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Plano Edit Dialog */}
-      <Dialog open={planoDialogOpen} onOpenChange={setPlanoDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingPlano ? 'Editar Plano' : 'Novo Plano'}</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="nome">Nome Comercial</Label>
-              <Input 
-                id="nome" 
-                placeholder="Ex: Plano Mensal"
-                defaultValue={editingPlano?.nome_comercial}
-                className="mt-2"
-              />
-            </div>
-            <div>
-              <Label htmlFor="duracao">Duração (dias)</Label>
-              <Input 
-                id="duracao" 
-                type="number"
-                placeholder="30"
-                defaultValue={editingPlano?.duracao_dias}
-                className="mt-2"
-              />
-            </div>
-            <div>
-              <Label htmlFor="preco">Preço (R$)</Label>
-              <Input 
-                id="preco" 
-                type="number"
-                step="0.01"
-                placeholder="29.90"
-                defaultValue={editingPlano?.preco}
-                className="mt-2"
-              />
-            </div>
-            <div>
-              <Label htmlFor="descricao">Descrição</Label>
-              <Textarea 
-                id="descricao"
-                placeholder="Descrição do plano..."
-                defaultValue={editingPlano?.descricao}
-                className="mt-2"
-              />
-            </div>
-            <Button variant="gradient" className="w-full">
-              {editingPlano ? 'Salvar Alterações' : 'Criar Plano'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Usuario Edit Dialog */}
+      {/* Edit Usuario Dialog */}
       <Dialog open={usuarioDialogOpen} onOpenChange={setUsuarioDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Usuário</DialogTitle>
           </DialogHeader>
-          
           {selectedUsuario && (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="user_nome">Nome Completo</Label>
-                <Input 
-                  id="user_nome" 
+                <Label>Nome Completo</Label>
+                <Input
                   value={selectedUsuario.nome_completo}
                   onChange={(e) => setSelectedUsuario({ ...selectedUsuario, nome_completo: e.target.value })}
                   className="mt-2"
                 />
               </div>
               <div>
-                <Label>E-mail</Label>
-                <Input 
-                  value={selectedUsuario.email}
-                  disabled
-                  className="mt-2 bg-muted"
-                />
-                <p className="text-xs text-muted-foreground mt-1">O e-mail não pode ser alterado</p>
-              </div>
-              <div>
-                <Label htmlFor="user_telefone">Telefone</Label>
-                <Input 
-                  id="user_telefone"
+                <Label>Telefone</Label>
+                <Input
                   value={selectedUsuario.telefone || ''}
                   onChange={(e) => setSelectedUsuario({ ...selectedUsuario, telefone: e.target.value })}
-                  placeholder="(00) 00000-0000"
                   className="mt-2"
                 />
               </div>
               <div>
-                <Label>Status da Conta</Label>
-                <Select 
+                <Label>Status</Label>
+                <Select
                   value={selectedUsuario.status}
                   onValueChange={(value) => setSelectedUsuario({ ...selectedUsuario, status: value })}
                 >
@@ -956,133 +779,21 @@ const AdminDashboard = () => {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  variant="gradient" 
-                  className="flex-1"
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setUsuarioDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="gradient"
                   onClick={() => handleUpdateUsuario(selectedUsuario.id, {
                     nome_completo: selectedUsuario.nome_completo,
                     telefone: selectedUsuario.telefone,
                     status: selectedUsuario.status
                   })}
                 >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Salvar Alterações
+                  Salvar
                 </Button>
               </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Teste Detail Dialog */}
-      <Dialog open={testeDialogOpen} onOpenChange={setTesteDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Solicitação de Teste Grátis</DialogTitle>
-          </DialogHeader>
-          
-          {selectedTeste && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Cliente</Label>
-                  <p className="font-medium">{selectedTeste.usuario_nome || 'Usuário'}</p>
-                  <p className="text-sm text-muted-foreground">{selectedTeste.usuario_email || '-'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Status Atual</Label>
-                  <div className="mt-1">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      selectedTeste.status === 'pendente' ? 'bg-warning/20 text-warning' :
-                      selectedTeste.status === 'aprovado' ? 'bg-success/20 text-success' :
-                      'bg-destructive/20 text-destructive'
-                    }`}>
-                      {selectedTeste.status === 'pendente' ? 'Pendente' :
-                       selectedTeste.status === 'aprovado' ? 'Aprovado' : 'Rejeitado'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Data da Solicitação</Label>
-                  <p className="font-medium">
-                    {format(new Date(selectedTeste.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                  </p>
-                </div>
-                {selectedTeste.aprovado_em && (
-                  <div>
-                    <Label className="text-muted-foreground">Processado em</Label>
-                    <p className="font-medium">
-                      {format(new Date(selectedTeste.aprovado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {selectedTeste.observacoes && (
-                <div>
-                  <Label className="text-muted-foreground">Observações do Cliente</Label>
-                  <p className="mt-1 p-3 bg-muted rounded-lg text-sm">{selectedTeste.observacoes}</p>
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="observacoes_admin">Observações do Admin</Label>
-                <Textarea 
-                  id="observacoes_admin"
-                  placeholder="Adicione observações sobre a solicitação..."
-                  value={selectedTeste.observacoes_admin || ''}
-                  onChange={(e) => setSelectedTeste({ ...selectedTeste, observacoes_admin: e.target.value })}
-                  className="mt-2"
-                  disabled={selectedTeste.status !== 'pendente'}
-                />
-              </div>
-
-              {selectedTeste.status === 'pendente' && (
-                <div className="flex gap-2 pt-4">
-                  <Button 
-                    variant="outline"
-                    className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    onClick={() => handleProcessarTeste(selectedTeste.id, 'rejeitado', selectedTeste.observacoes_admin)}
-                    disabled={processingTeste}
-                  >
-                    {processingTeste ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <XCircle className="w-4 h-4 mr-2" />
-                    )}
-                    Rejeitar
-                  </Button>
-                  <Button 
-                    className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
-                    onClick={() => handleProcessarTeste(selectedTeste.id, 'aprovado', selectedTeste.observacoes_admin)}
-                    disabled={processingTeste}
-                  >
-                    {processingTeste ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                    )}
-                    Aprovar
-                  </Button>
-                </div>
-              )}
-
-              {selectedTeste.status !== 'pendente' && (
-                <div className="pt-4">
-                  <Button 
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setTesteDialogOpen(false)}
-                  >
-                    Fechar
-                  </Button>
-                </div>
-              )}
             </div>
           )}
         </DialogContent>

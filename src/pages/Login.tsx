@@ -12,7 +12,7 @@ import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, isAdmin } = useAuth();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -35,9 +35,17 @@ const Login = () => {
       const redirect = (location.state as any)?.redirect || '/dashboard';
       navigate(redirect);
     } catch (error: any) {
+      let message = "Credenciais inválidas";
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        message = "Email ou senha incorretos";
+      } else if (error.message?.includes('Email not confirmed')) {
+        message = "Por favor, confirme seu email antes de fazer login";
+      }
+      
       toast({
         title: "Erro no login",
-        description: error.message || "Credenciais inválidas",
+        description: message,
         variant: "destructive",
       });
     } finally {
