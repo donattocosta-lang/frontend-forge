@@ -1,4 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.don-app.com';
+// API URL - Uses the edge function that connects to external Supabase
+const API_URL = import.meta.env.VITE_SUPABASE_URL 
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api`
+  : 'https://nskipvjgslhppefyotqk.supabase.co/functions/v1/api';
 
 class ApiClient {
   private token: string | null = null;
@@ -48,14 +51,14 @@ class ApiClient {
 
   // Auth
   async register(data: { email: string; senha: string; nome_completo: string; telefone?: string }) {
-    return this.request<{ message: string; user: any }>('/api/auth/register', {
+    return this.request<{ message: string; user: any }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async login(data: { email: string; senha: string }) {
-    const response = await this.request<{ token: string; user: any }>('/api/auth/login', {
+    const response = await this.request<{ token: string; user: any }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -70,22 +73,22 @@ class ApiClient {
 
   // Planos
   async getPlanos() {
-    return this.request<any[]>('/api/planos');
+    return this.request<any[]>('/planos');
   }
 
   async getAdminPlanos() {
-    return this.request<any[]>('/api/admin/planos');
+    return this.request<any[]>('/admin/planos');
   }
 
   async createPlano(data: any) {
-    return this.request<any>('/api/admin/planos', {
+    return this.request<any>('/admin/planos', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updatePlano(id: string, data: any) {
-    return this.request<any>(`/api/admin/planos/${id}`, {
+    return this.request<any>(`/admin/planos/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -93,18 +96,18 @@ class ApiClient {
 
   // Pedidos
   async criarPedido(planoId: string) {
-    return this.request<any>('/api/pedidos', {
+    return this.request<any>('/pedidos', {
       method: 'POST',
       body: JSON.stringify({ plano_id: planoId }),
     });
   }
 
   async getPedidos() {
-    return this.request<any[]>('/api/pedidos');
+    return this.request<any[]>('/pedidos');
   }
 
   async getPedido(id: string) {
-    return this.request<any>(`/api/pedidos/${id}`);
+    return this.request<any>(`/pedidos/${id}`);
   }
 
   async getAdminPedidos(filters?: { status_pagamento?: string; status_acesso?: string }) {
@@ -112,11 +115,11 @@ class ApiClient {
     if (filters?.status_pagamento) params.append('status_pagamento', filters.status_pagamento);
     if (filters?.status_acesso) params.append('status_acesso', filters.status_acesso);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return this.request<any[]>(`/api/admin/pedidos${query}`);
+    return this.request<any[]>(`/admin/pedidos${query}`);
   }
 
   async updatePedido(id: string, data: { status_acesso?: string; observacoes_admin?: string }) {
-    return this.request<any>(`/api/admin/pedidos/${id}`, {
+    return this.request<any>(`/admin/pedidos/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -124,30 +127,30 @@ class ApiClient {
 
   // Notificações
   async getNotificacoes() {
-    return this.request<any[]>('/api/notificacoes');
+    return this.request<any[]>('/notificacoes');
   }
 
   async marcarNotificacaoLida(id: string) {
-    return this.request<any>(`/api/notificacoes/${id}/lida`, {
+    return this.request<any>(`/notificacoes/${id}/lida`, {
       method: 'PUT',
     });
   }
 
   // Estatísticas
   async getEstatisticas() {
-    return this.request<any>('/api/admin/estatisticas');
+    return this.request<any>('/admin/estatisticas');
   }
 
   // Perfil do usuário
   async updateProfile(data: { nome_completo?: string; telefone?: string }) {
-    return this.request<any>('/api/auth/profile', {
+    return this.request<any>('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async changePassword(data: { senha_atual: string; nova_senha: string }) {
-    return this.request<any>('/api/auth/change-password', {
+    return this.request<any>('/auth/change-password', {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -159,15 +162,15 @@ class ApiClient {
     if (filters?.status) params.append('status', filters.status);
     if (filters?.search) params.append('search', filters.search);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return this.request<any[]>(`/api/admin/usuarios${query}`);
+    return this.request<any[]>(`/admin/usuarios${query}`);
   }
 
   async getAdminUsuario(id: string) {
-    return this.request<any>(`/api/admin/usuarios/${id}`);
+    return this.request<any>(`/admin/usuarios/${id}`);
   }
 
   async updateAdminUsuario(id: string, data: { nome_completo?: string; telefone?: string; status?: string }) {
-    return this.request<any>(`/api/admin/usuarios/${id}`, {
+    return this.request<any>(`/admin/usuarios/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -175,11 +178,11 @@ class ApiClient {
 
   // Solicitações de Teste Grátis
   async getSolicitacoesTeste() {
-    return this.request<any[]>('/api/solicitacoes-teste');
+    return this.request<any[]>('/solicitacoes-teste');
   }
 
   async solicitarTesteGratis(observacoes?: string) {
-    return this.request<{ message: string; solicitacao: any }>('/api/solicitacoes-teste', {
+    return this.request<{ message: string; solicitacao: any }>('/solicitacoes-teste', {
       method: 'POST',
       body: JSON.stringify({ observacoes }),
     });
@@ -187,11 +190,11 @@ class ApiClient {
 
   async getAdminSolicitacoesTeste(status?: string) {
     const query = status ? `?status=${status}` : '';
-    return this.request<any[]>(`/api/admin/solicitacoes-teste${query}`);
+    return this.request<any[]>(`/admin/solicitacoes-teste${query}`);
   }
 
   async processarSolicitacaoTeste(id: string, data: { status: 'aprovado' | 'rejeitado'; observacoes_admin?: string }) {
-    return this.request<{ message: string; solicitacao: any }>(`/api/admin/solicitacoes-teste/${id}`, {
+    return this.request<{ message: string; solicitacao: any }>(`/admin/solicitacoes-teste/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
