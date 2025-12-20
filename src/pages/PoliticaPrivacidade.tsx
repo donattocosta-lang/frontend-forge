@@ -35,7 +35,7 @@ const PoliticaPrivacidade = () => {
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">1. Introdução</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    O Don APP está comprometido em proteger sua privacidade. Esta Política de Privacidade explica 
+                    O Fast IPTV está comprometido em proteger sua privacidade. Esta Política de Privacidade explica 
                     como coletamos, usamos, divulgamos e protegemos suas informações pessoais quando você utiliza 
                     nossos serviços. Ao utilizar nosso serviço, você concorda com a coleta e uso de informações 
                     de acordo com esta política.

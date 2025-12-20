@@ -35,7 +35,7 @@ const TermosUso = () => {
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">1. Aceitação dos Termos</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Ao acessar e utilizar os serviços do Don APP, você concorda em cumprir e estar vinculado a estes Termos de Uso. 
+                    Ao acessar e utilizar os serviços do Fast IPTV, você concorda em cumprir e estar vinculado a estes Termos de Uso. 
                     Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos serviços.
                   </p>
                 </div>
@@ -43,7 +43,7 @@ const TermosUso = () => {
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">2. Descrição do Serviço</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    O Don APP é uma plataforma de streaming que fornece acesso a conteúdos de televisão via internet (IPTV). 
+                    O Fast IPTV é uma plataforma de streaming que fornece acesso a conteúdos de televisão via internet (IPTV). 
                     O serviço inclui acesso a canais ao vivo, conteúdo sob demanda e outros recursos de entretenimento 
                     disponibilizados através de nossa plataforma.
                   </p>
@@ -99,7 +99,7 @@ const TermosUso = () => {
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">7. Propriedade Intelectual</h2>
                   <p className="text-muted-foreground leading-relaxed">
                     Todo o conteúdo disponibilizado através do serviço, incluindo mas não limitado a textos, gráficos, 
-                    logotipos, ícones, imagens, clipes de áudio e software, é de propriedade do Don APP ou de seus 
+                    logotipos, ícones, imagens, clipes de áudio e software, é de propriedade do Fast IPTV ou de seus 
                     licenciadores e está protegido pelas leis de direitos autorais.
                   </p>
                 </div>
@@ -107,7 +107,7 @@ const TermosUso = () => {
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">8. Limitação de Responsabilidade</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Em nenhuma circunstância o Don APP será responsável por danos indiretos, incidentais, especiais, 
+                    Em nenhuma circunstância o Fast IPTV será responsável por danos indiretos, incidentais, especiais, 
                     consequenciais ou punitivos, incluindo perda de lucros, dados, uso, boa vontade ou outras perdas 
                     intangíveis, resultantes de seu acesso ou uso ou incapacidade de acessar ou usar o serviço.
                   </p>

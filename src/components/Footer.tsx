@@ -11,7 +11,7 @@ export function Footer() {
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
                 <Tv className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-display font-bold text-xl gradient-text">Don APP</span>
+              <span className="font-display font-bold text-xl gradient-text">Fast IPTV</span>
             </Link>
             <p className="text-muted-foreground text-sm">
               A melhor experiência em streaming de TV. Planos flexíveis e suporte dedicado.
@@ -81,7 +81,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Don APP. Todos os direitos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} Fast IPTV. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>
