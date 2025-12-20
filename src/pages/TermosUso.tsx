@@ -147,7 +147,7 @@ const TermosUso = () => {
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">12. Contato</h2>
                   <p className="text-muted-foreground leading-relaxed">
                     Se você tiver dúvidas sobre estes Termos de Uso, entre em contato conosco através do 
-                    e-mail suporte@donapp.com ou pelo WhatsApp disponível em nosso site.
+                    e-mail suporte@fastiptv.com ou pelo WhatsApp disponível em nosso site.
                   </p>
                 </div>
 

@@ -136,7 +136,7 @@ const PoliticaPrivacidade = () => {
                     <li><strong>Revogação:</strong> Revogar seu consentimento a qualquer momento</li>
                   </ul>
                   <p className="text-muted-foreground leading-relaxed mt-4">
-                    Para exercer esses direitos, entre em contato conosco através do e-mail suporte@donapp.com.
+                    Para exercer esses direitos, entre em contato conosco através do e-mail suporte@fastiptv.com.
                   </p>
                 </div>
 
@@ -185,7 +185,7 @@ const PoliticaPrivacidade = () => {
                     privacidade, entre em contato conosco:
                   </p>
                   <ul className="text-muted-foreground space-y-2 list-disc list-inside mt-4">
-                    <li><strong>E-mail:</strong> suporte@donapp.com</li>
+                    <li><strong>E-mail:</strong> suporte@fastiptv.com</li>
                     <li><strong>WhatsApp:</strong> Disponível em nosso site</li>
                   </ul>
                 </div>
@@ -195,7 +195,7 @@ const PoliticaPrivacidade = () => {
                     <strong className="text-foreground">Encarregado de Proteção de Dados (DPO):</strong> Para questões 
                     relacionadas ao tratamento de dados pessoais e exercício de direitos previstos na LGPD, 
                     você pode entrar em contato com nosso Encarregado de Proteção de Dados através do 
-                    e-mail: dpo@donapp.com
+                    e-mail: dpo@fastiptv.com
                   </p>
                 </div>
 
