@@ -231,7 +231,8 @@ const PoliticaPrivacidade = () => {
                   <p className="text-muted-foreground text-sm">
                     <strong className="text-foreground">Encarregado de Proteção de Dados (DPO):</strong> Para questões
                     relacionadas ao tratamento de dados pessoais e exercício de direitos previstos na LGPD, você pode
-                    entrar em contato com nosso Encarregado de Proteção de Dados através do e-mail: dpo@fastiptv.com
+                    entrar em contato com nosso Encarregado de Proteção de Dados através do e-mail:
+                    suporte@fast-iptv.app
                   </p>
                 </div>
               </div>
