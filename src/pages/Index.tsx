@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { planoService, pedidoService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { AnimatedSection } from '@/hooks/useScrollAnimation';
 import heroBg from '@/assets/hero-bg.jpg';
 import featuresBg from '@/assets/features-bg.jpg';
 
@@ -176,11 +177,11 @@ const Index = () => {
       {/* Categories Section */}
       <section className="py-16 bg-card/50 border-y border-border">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+          <AnimatedSection animation="stagger" className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
             {categories.map((category, index) => (
               <div 
                 key={index}
-                className="p-6 rounded-2xl bg-gradient-to-br from-card to-background border border-border hover:border-primary/50 transition-all duration-300 hover:scale-105 text-center group"
+                className="p-6 rounded-2xl bg-gradient-to-br from-card to-background border border-border hover:border-primary/50 transition-all duration-300 hover:scale-105 text-center group card-3d"
               >
                 <div className="w-14 h-14 mx-auto rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-4 group-hover:from-primary/30 group-hover:to-secondary/30 transition-colors">
                   <category.icon className="w-7 h-7 text-primary" />
@@ -189,7 +190,7 @@ const Index = () => {
                 <p className="text-muted-foreground text-sm">{category.description}</p>
               </div>
             ))}
-          </div>
+          </AnimatedSection>
         </div>
       </section>
 
@@ -202,21 +203,21 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background via-background/95 to-background" />
         
         <div className="container mx-auto px-4 relative z-10">
-          <div className="text-center mb-12">
+          <AnimatedSection animation="blur-in" className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
               Por que escolher o <span className="gradient-text">Fast IPTV</span>?
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Oferecemos a melhor experiência em streaming com tecnologia de ponta e suporte humanizado.
             </p>
-          </div>
+          </AnimatedSection>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <AnimatedSection animation="stagger" className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => (
               <div 
                 key={index}
-                className="p-6 rounded-2xl bg-card/80 backdrop-blur-sm border border-border hover:border-primary/50 hover-lift animate-slide-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
+                className="p-6 rounded-2xl bg-card/80 backdrop-blur-sm border border-border hover:border-primary/50 card-3d animate-glow-border"
+                style={{ animationDelay: `${index * 0.5}s` }}
               >
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-4">
                   <feature.icon className="w-6 h-6 text-primary" />
@@ -225,14 +226,14 @@ const Index = () => {
                 <p className="text-muted-foreground text-sm">{feature.description}</p>
               </div>
             ))}
-          </div>
+          </AnimatedSection>
         </div>
       </section>
 
       {/* Plans Section */}
       <section id="planos" className="py-20 bg-gradient-to-b from-background to-card/50">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
+          <AnimatedSection animation="zoom-in" className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 mb-4">
               <Zap className="w-4 h-4 text-primary" />
               <span className="text-sm text-primary font-medium">Planos Flexíveis</span>
@@ -243,16 +244,16 @@ const Index = () => {
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Quanto maior o período, maior a economia. Todos os planos incluem acesso completo a filmes, séries e esportes.
             </p>
-          </div>
+          </AnimatedSection>
 
           {loading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[1,2,3,4].map((i) => (
-                <div key={i} className="h-96 rounded-2xl bg-card border border-border animate-pulse" />
+                <div key={i} className="h-96 rounded-2xl bg-card border border-border shimmer" />
               ))}
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-center">
+            <AnimatedSection animation="stagger" className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-center">
               {planos.map((plano, index) => (
                 <PlanCard
                   key={plano.id}
@@ -266,7 +267,7 @@ const Index = () => {
                   loading={selectedPlan === plano.id}
                 />
               ))}
-            </div>
+            </AnimatedSection>
           )}
         </div>
       </section>
@@ -275,23 +276,23 @@ const Index = () => {
       <section className="py-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-secondary/10 to-primary/20" />
         <div className="absolute inset-0">
-          <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-primary/30 rounded-full blur-[100px]" />
-          <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-secondary/30 rounded-full blur-[100px]" />
+          <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-primary/30 rounded-full blur-[100px] animate-float" />
+          <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-secondary/30 rounded-full blur-[100px] animate-float" style={{ animationDelay: '3s' }} />
         </div>
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <Film className="w-16 h-16 mx-auto mb-6 text-primary" />
+          <AnimatedSection animation="blur-in" className="max-w-3xl mx-auto text-center">
+            <Film className="w-16 h-16 mx-auto mb-6 text-primary animate-pulse-glow" />
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
               Pronto para sua maratona?
             </h2>
             <p className="text-muted-foreground mb-8 text-lg">
               Junte-se a milhares de clientes satisfeitos e tenha acesso ao melhor conteúdo de streaming. Filmes, séries e esportes ao vivo.
             </p>
-            <Button variant="gradient" size="xl" onClick={() => navigate('/cadastro')}>
+            <Button variant="gradient" size="xl" onClick={() => navigate('/cadastro')} className="group">
               Começar Agora
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
             </Button>
-          </div>
+          </AnimatedSection>
         </div>
       </section>
 
