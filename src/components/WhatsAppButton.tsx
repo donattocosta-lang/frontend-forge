@@ -7,7 +7,7 @@ interface WhatsAppButtonProps {
 
 export const WhatsAppButton = ({ 
   phoneNumber = '5511999999999', 
-  message = 'Olá! Gostaria de saber mais sobre os planos do Don APP.' 
+  message = 'Olá! Gostaria de saber mais sobre os planos do Fast IPTV.' 
 }: WhatsAppButtonProps) => {
   const handleClick = () => {
     const encodedMessage = encodeURIComponent(message);
