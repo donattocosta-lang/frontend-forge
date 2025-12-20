@@ -1,5 +1,5 @@
-import { Tv, Mail, Phone, MapPin } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Tv, Mail, Phone, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export function Footer() {
   return (
@@ -58,7 +58,10 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/politica-de-privacidade" className="text-muted-foreground hover:text-primary transition-colors">
+                <Link
+                  to="/politica-de-privacidade"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
                   Política de Privacidade
                 </Link>
               </li>
@@ -70,7 +73,7 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2 text-muted-foreground">
                 <Mail className="w-4 h-4 text-primary" />
-                suporte@fastiptv.com
+                suporte@fastiptv.app
               </li>
               <li className="flex items-center gap-2 text-muted-foreground">
                 <Phone className="w-4 h-4 text-primary" />
