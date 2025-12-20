@@ -13,8 +13,13 @@ import {
   Globe,
   Shield,
   Headphones,
-  ChevronRight
+  ChevronRight,
+  Film,
+  Trophy,
+  Clapperboard
 } from 'lucide-react';
+import heroBg from '@/assets/hero-bg.jpg';
+import featuresBg from '@/assets/features-bg.jpg';
 
 const SaibaMais = () => {
   const dispositivos = [
@@ -97,22 +102,51 @@ const SaibaMais = () => {
     }
   ];
 
+  const conteudos = [
+    { icon: Film, title: 'Filmes', desc: 'Lançamentos e clássicos' },
+    { icon: Clapperboard, title: 'Séries', desc: 'As mais populares' },
+    { icon: Trophy, title: 'Esportes', desc: 'Futebol, UFC e mais' },
+    { icon: Tv, title: 'TV ao Vivo', desc: 'Canais abertos e fechados' },
+  ];
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
 
       <main className="flex-1 pt-24">
-        {/* Hero Section */}
-        <section className="py-16 md:py-24">
-          <div className="container mx-auto px-4">
+        {/* Hero Section with Background */}
+        <section className="py-16 md:py-24 relative overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+            style={{ backgroundImage: `url(${featuresBg})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background via-background/90 to-background" />
+          
+          <div className="container mx-auto px-4 relative z-10">
             <div className="max-w-3xl mx-auto text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30 mb-6 backdrop-blur-sm">
+                <Play className="w-4 h-4 text-primary fill-primary" />
+                <span className="text-sm text-primary font-medium">Entretenimento Completo</span>
+              </div>
+              
               <h1 className="font-display text-4xl md:text-5xl font-bold mb-6">
                 O que é <span className="gradient-text">IPTV</span>?
               </h1>
-              <p className="text-lg text-muted-foreground mb-6">
+              <p className="text-lg text-muted-foreground mb-8">
                 IPTV (Internet Protocol Television) é uma tecnologia que permite assistir TV através da internet, 
                 oferecendo milhares de canais e conteúdos on demand com qualidade superior e preço acessível.
               </p>
+
+              {/* Content Categories */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                {conteudos.map((item, index) => (
+                  <div key={index} className="p-4 rounded-xl bg-card/80 backdrop-blur-sm border border-border">
+                    <item.icon className="w-8 h-8 mx-auto mb-2 text-primary" />
+                    <h4 className="font-semibold text-sm">{item.title}</h4>
+                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
 
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 mb-6">
                 <Zap className="w-4 h-4 text-success" />
@@ -186,8 +220,14 @@ const SaibaMais = () => {
         </section>
 
         {/* Como Funciona Section */}
-        <section className="py-16">
-          <div className="container mx-auto px-4">
+        <section className="py-16 relative overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10"
+            style={{ backgroundImage: `url(${heroBg})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background" />
+          
+          <div className="container mx-auto px-4 relative z-10">
             <div className="text-center mb-12">
               <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
                 Como <span className="gradient-text">funciona</span>?
@@ -200,7 +240,7 @@ const SaibaMais = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {comoFunciona.map((item, index) => (
                 <div key={index} className="relative">
-                  <div className="p-6 rounded-2xl bg-card border border-border h-full">
+                  <div className="p-6 rounded-2xl bg-card/80 backdrop-blur-sm border border-border h-full">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center mb-4">
                       <span className="font-display font-bold text-xl text-primary-foreground">{item.step}</span>
                     </div>
@@ -297,9 +337,15 @@ const SaibaMais = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 bg-gradient-to-b from-background to-card">
-          <div className="container mx-auto px-4">
+        <section className="py-16 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-secondary/10 to-primary/20" />
+          <div className="absolute inset-0">
+            <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-primary/30 rounded-full blur-[100px]" />
+            <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-secondary/30 rounded-full blur-[100px]" />
+          </div>
+          <div className="container mx-auto px-4 relative z-10">
             <div className="max-w-2xl mx-auto text-center">
+              <Film className="w-16 h-16 mx-auto mb-6 text-primary" />
               <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
                 Pronto para começar?
               </h2>
