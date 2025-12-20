@@ -1,6 +1,6 @@
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
-import { FileText } from 'lucide-react';
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { FileText } from "lucide-react";
 
 const TermosUso = () => {
   return (
@@ -20,7 +20,8 @@ const TermosUso = () => {
                 Termos de <span className="gradient-text">Uso</span>
               </h1>
               <p className="text-lg text-muted-foreground">
-                Última atualização: {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                Última atualização:{" "}
+                {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
               </p>
             </div>
           </div>
@@ -31,21 +32,21 @@ const TermosUso = () => {
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto prose prose-invert prose-lg">
               <div className="bg-card border border-border rounded-2xl p-8 md:p-12 space-y-8">
-                
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">1. Aceitação dos Termos</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Ao acessar e utilizar os serviços do Fast IPTV, você concorda em cumprir e estar vinculado a estes Termos de Uso. 
-                    Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos serviços.
+                    Ao acessar e utilizar os serviços do Fast IPTV, você concorda em cumprir e estar vinculado a estes
+                    Termos de Uso. Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos
+                    serviços.
                   </p>
                 </div>
 
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">2. Descrição do Serviço</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    O Fast IPTV é uma plataforma de streaming que fornece acesso a conteúdos de televisão via internet (IPTV). 
-                    O serviço inclui acesso a canais ao vivo, conteúdo sob demanda e outros recursos de entretenimento 
-                    disponibilizados através de nossa plataforma.
+                    O Fast IPTV é uma plataforma de streaming que fornece acesso a conteúdos de televisão via internet
+                    (IPTV). O serviço inclui acesso a canais ao vivo, conteúdo sob demanda e outros recursos de
+                    entretenimento disponibilizados através de nossa plataforma.
                   </p>
                 </div>
 
@@ -86,29 +87,33 @@ const TermosUso = () => {
                 </div>
 
                 <div>
-                  <h2 className="font-display text-2xl font-bold mb-4 text-foreground">6. Disponibilidade do Serviço</h2>
+                  <h2 className="font-display text-2xl font-bold mb-4 text-foreground">
+                    6. Disponibilidade do Serviço
+                  </h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Nos esforçamos para manter o serviço disponível 24/7, mas não garantimos disponibilidade ininterrupta. 
-                    O serviço pode estar temporariamente indisponível devido a manutenção, atualizações ou circunstâncias 
-                    além do nosso controle. Não nos responsabilizamos por interrupções decorrentes de problemas em sua 
-                    conexão de internet ou equipamentos.
+                    Nos esforçamos para manter o serviço disponível 24/7, mas não garantimos disponibilidade
+                    ininterrupta. O serviço pode estar temporariamente indisponível devido a manutenção, atualizações ou
+                    circunstâncias além do nosso controle. Não nos responsabilizamos por interrupções decorrentes de
+                    problemas em sua conexão de internet ou equipamentos.
                   </p>
                 </div>
 
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">7. Propriedade Intelectual</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Todo o conteúdo disponibilizado através do serviço, incluindo mas não limitado a textos, gráficos, 
-                    logotipos, ícones, imagens, clipes de áudio e software, é de propriedade do Fast IPTV ou de seus 
+                    Todo o conteúdo disponibilizado através do serviço, incluindo mas não limitado a textos, gráficos,
+                    logotipos, ícones, imagens, clipes de áudio e software, é de propriedade do Fast IPTV ou de seus
                     licenciadores e está protegido pelas leis de direitos autorais.
                   </p>
                 </div>
 
                 <div>
-                  <h2 className="font-display text-2xl font-bold mb-4 text-foreground">8. Limitação de Responsabilidade</h2>
+                  <h2 className="font-display text-2xl font-bold mb-4 text-foreground">
+                    8. Limitação de Responsabilidade
+                  </h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Em nenhuma circunstância o Fast IPTV será responsável por danos indiretos, incidentais, especiais, 
-                    consequenciais ou punitivos, incluindo perda de lucros, dados, uso, boa vontade ou outras perdas 
+                    Em nenhuma circunstância o Fast IPTV será responsável por danos indiretos, incidentais, especiais,
+                    consequenciais ou punitivos, incluindo perda de lucros, dados, uso, boa vontade ou outras perdas
                     intangíveis, resultantes de seu acesso ou uso ou incapacidade de acessar ou usar o serviço.
                   </p>
                 </div>
@@ -116,7 +121,8 @@ const TermosUso = () => {
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">9. Suspensão e Cancelamento</h2>
                   <p className="text-muted-foreground leading-relaxed mb-4">
-                    Reservamo-nos o direito de suspender ou cancelar sua conta a qualquer momento, sem aviso prévio, caso:
+                    Reservamo-nos o direito de suspender ou cancelar sua conta a qualquer momento, sem aviso prévio,
+                    caso:
                   </p>
                   <ul className="text-muted-foreground space-y-2 list-disc list-inside">
                     <li>Você viole qualquer disposição destes Termos de Uso.</li>
@@ -129,8 +135,8 @@ const TermosUso = () => {
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">10. Alterações nos Termos</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Podemos modificar estes Termos de Uso a qualquer momento. As alterações entrarão em vigor 
-                    imediatamente após a publicação dos termos revisados. O uso continuado do serviço após qualquer 
+                    Podemos modificar estes Termos de Uso a qualquer momento. As alterações entrarão em vigor
+                    imediatamente após a publicação dos termos revisados. O uso continuado do serviço após qualquer
                     alteração constitui sua aceitação dos novos termos.
                   </p>
                 </div>
@@ -138,7 +144,7 @@ const TermosUso = () => {
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">11. Lei Aplicável</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Estes Termos de Uso são regidos pelas leis da República Federativa do Brasil. Qualquer disputa 
+                    Estes Termos de Uso são regidos pelas leis da República Federativa do Brasil. Qualquer disputa
                     relacionada a estes termos será submetida à jurisdição exclusiva dos tribunais brasileiros.
                   </p>
                 </div>
@@ -146,11 +152,10 @@ const TermosUso = () => {
                 <div>
                   <h2 className="font-display text-2xl font-bold mb-4 text-foreground">12. Contato</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Se você tiver dúvidas sobre estes Termos de Uso, entre em contato conosco através do 
-                    e-mail suporte@fastiptv.com ou pelo WhatsApp disponível em nosso site.
+                    Se você tiver dúvidas sobre estes Termos de Uso, entre em contato conosco através do e-mail
+                    suporte@fast-iptv.app ou pelo WhatsApp disponível em nosso site.
                   </p>
                 </div>
-
               </div>
             </div>
           </div>
