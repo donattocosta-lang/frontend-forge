@@ -219,7 +219,7 @@ const PoliticaPrivacidade = () => {
                   </p>
                   <ul className="text-muted-foreground space-y-2 list-disc list-inside mt-4">
                     <li>
-                      <strong>E-mail:</strong> suporte@fastiptv.com
+                      <strong>E-mail:</strong> suporte@fast-iptv.app
                     </li>
                     <li>
                       <strong>WhatsApp:</strong> Disponível em nosso site
