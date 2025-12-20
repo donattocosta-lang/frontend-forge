@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Tv, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +7,18 @@ import { useState } from 'react';
 export function Header() {
   const { isAuthenticated, isAdmin, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const scrollToPlanos = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (location.pathname !== '/') {
+      navigate('/', { state: { scrollToPlanos: true } });
+    } else {
+      document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
+    }
+    setMobileMenuOpen(false);
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass">
@@ -24,9 +36,13 @@ export function Header() {
             <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
               Início
             </Link>
-            <Link to="/#planos" className="text-muted-foreground hover:text-foreground transition-colors">
+            <a 
+              href="#planos" 
+              onClick={scrollToPlanos}
+              className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
               Planos
-            </Link>
+            </a>
             {isAuthenticated ? (
               <>
                 <Link 
@@ -71,13 +87,13 @@ export function Header() {
               >
                 Início
               </Link>
-              <Link 
-                to="/#planos" 
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
+              <a 
+                href="#planos" 
+                onClick={scrollToPlanos}
+                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 Planos
-              </Link>
+              </a>
               {isAuthenticated ? (
                 <>
                   <Link 
