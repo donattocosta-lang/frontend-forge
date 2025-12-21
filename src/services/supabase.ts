@@ -86,21 +86,16 @@ export const authService = {
 
     if (error) throw error;
 
-    // Create user profile in usuarios table
+    // Ensure profile exists (safe even if backend trigger already created it)
     if (data.user) {
-      const { error: profileError } = await supabase
-        .from('usuarios')
-        .insert({
-          id: data.user.id,
-          email: email,
+      try {
+        await usuarioService.ensureProfile(data.user, {
+          email,
           nome_completo: userData.nome_completo,
-          telefone: userData.telefone || null,
-          role: 'cliente',
-          status: 'ativa'
+          telefone: userData.telefone ?? null,
         });
-
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
+      } catch (profileError) {
+        console.error('Error ensuring profile:', profileError);
       }
     }
 
@@ -153,6 +148,40 @@ export const usuarioService = {
       .select('*')
       .eq('id', userId)
       .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async ensureProfile(
+    user: User,
+    overrides?: { email?: string; nome_completo?: string; telefone?: string | null }
+  ): Promise<Usuario> {
+    const email = overrides?.email ?? user.email;
+    if (!email) throw new Error('Não foi possível determinar o email do usuário.');
+
+    const nomeCompleto =
+      overrides?.nome_completo ??
+      (user.user_metadata?.nome_completo as string | undefined) ??
+      email;
+
+    const telefone =
+      overrides?.telefone ??
+      ((user.user_metadata?.telefone as string | undefined) ?? null);
+
+    const { data, error } = await supabase
+      .from('usuarios')
+      .upsert(
+        {
+          id: user.id,
+          email,
+          nome_completo: nomeCompleto,
+          telefone,
+        },
+        { onConflict: 'id' }
+      )
+      .select('*')
+      .single();
 
     if (error) throw error;
     return data;
