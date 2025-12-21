@@ -119,7 +119,7 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/50" />
         
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl">
+          <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30 mb-6 animate-fade-in backdrop-blur-sm">
               <Play className="w-4 h-4 text-primary fill-primary" />
               <span className="text-sm text-primary font-medium">Filmes, Séries, Esportes e muito mais</span>
@@ -132,7 +132,7 @@ const Index = () => {
               <span className="text-3xl md:text-5xl lg:text-6xl text-muted-foreground">24 horas por dia</span>
             </h1>
             
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl animate-slide-up" style={{ animationDelay: '0.1s' }}>
+            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-slide-up" style={{ animationDelay: '0.1s' }}>
               Milhares de canais ao vivo, filmes, séries e esportes. Qualidade HD e 4K com suporte dedicado. A melhor experiência em streaming.
             </p>
 
@@ -141,7 +141,7 @@ const Index = () => {
               <span className="text-sm text-success font-medium">Teste grátis de 6 horas disponível!</span>
             </div>
             
-            <div className="flex flex-col sm:flex-row items-start gap-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
               <Button variant="gradient" size="xl" onClick={() => document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })}>
                 <Play className="w-5 h-5 fill-current" />
                 Assinar Agora
@@ -154,7 +154,7 @@ const Index = () => {
               </Link>
             </div>
 
-            <div className="flex items-center gap-8 mt-12 text-sm text-muted-foreground">
+            <div className="flex items-center justify-center gap-8 mt-12 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <div className="flex -space-x-2">
                   {[1,2,3,4].map((i) => (
