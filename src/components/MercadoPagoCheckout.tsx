@@ -50,11 +50,14 @@ export function MercadoPagoCheckout({ pedidoId, planoNome, valor, userEmail }: M
     initMP();
   }, [toast]);
 
-  const handleOnSubmit = async (formData: any) => {
-    console.log('Payment form submitted:', formData);
+  const handleOnSubmit = async (submitData: any) => {
+    console.log('Payment form submitted:', submitData);
     setIsProcessing(true);
 
     try {
+      // MercadoPago Payment Brick returns data in formData property
+      const paymentData = submitData.formData || submitData;
+      
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago?action=process-payment`,
         {
@@ -63,15 +66,15 @@ export function MercadoPagoCheckout({ pedidoId, planoNome, valor, userEmail }: M
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            token: formData.token,
-            paymentMethodId: formData.payment_method_id,
-            issuerId: formData.issuer_id,
-            installments: formData.installments,
-            email: formData.payer.email,
+            token: paymentData.token,
+            paymentMethodId: paymentData.payment_method_id,
+            issuerId: paymentData.issuer_id,
+            installments: paymentData.installments,
+            email: paymentData.payer?.email || userEmail,
             amount: valor,
             pedidoId,
-            identificationType: formData.payer?.identification?.type,
-            identificationNumber: formData.payer?.identification?.number,
+            identificationType: paymentData.payer?.identification?.type,
+            identificationNumber: paymentData.payer?.identification?.number,
           }),
         }
       );
