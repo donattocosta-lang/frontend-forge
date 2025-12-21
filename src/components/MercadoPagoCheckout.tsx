@@ -3,6 +3,14 @@ import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { PixQRCode } from './PixQRCode';
+
+interface PixData {
+  qrCode: string;
+  qrCodeBase64: string;
+  ticketUrl?: string;
+  expirationDate?: string;
+}
 
 interface MercadoPagoCheckoutProps {
   pedidoId: string;
@@ -14,6 +22,7 @@ interface MercadoPagoCheckoutProps {
 export function MercadoPagoCheckout({ pedidoId, planoNome, valor, userEmail }: MercadoPagoCheckoutProps) {
   const [isReady, setIsReady] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pixData, setPixData] = useState<PixData | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -89,11 +98,25 @@ export function MercadoPagoCheckout({ pedidoId, planoNome, valor, userEmail }: M
         });
         navigate(`/pagamento/sucesso?pedido_id=${pedidoId}`);
       } else if (result.status === 'pending' || result.status === 'in_process') {
-        toast({
-          title: 'Pagamento Pendente',
-          description: 'Seu pagamento está sendo processado.',
-        });
-        navigate(`/pagamento/pendente?pedido_id=${pedidoId}`);
+        // Check if it's a PIX payment with QR code
+        if (result.pixQrCodeBase64 && result.pixQrCode) {
+          setPixData({
+            qrCode: result.pixQrCode,
+            qrCodeBase64: result.pixQrCodeBase64,
+            ticketUrl: result.pixTicketUrl,
+            expirationDate: result.expirationDate,
+          });
+          toast({
+            title: 'PIX gerado!',
+            description: 'Escaneie o QR Code para pagar.',
+          });
+        } else {
+          toast({
+            title: 'Pagamento Pendente',
+            description: 'Seu pagamento está sendo processado.',
+          });
+          navigate(`/pagamento/pendente?pedido_id=${pedidoId}`);
+        }
       } else {
         toast({
           title: 'Pagamento não aprovado',
@@ -126,6 +149,19 @@ export function MercadoPagoCheckout({ pedidoId, planoNome, valor, userEmail }: M
   const handleOnReady = () => {
     console.log('Payment Brick ready');
   };
+
+  // Show PIX QR Code if available
+  if (pixData) {
+    return (
+      <PixQRCode 
+        qrCode={pixData.qrCode}
+        qrCodeBase64={pixData.qrCodeBase64}
+        ticketUrl={pixData.ticketUrl}
+        expirationDate={pixData.expirationDate}
+        valor={valor}
+      />
+    );
+  }
 
   if (!isReady) {
     return (
