@@ -161,7 +161,8 @@ serve(async (req) => {
       });
 
       const paymentResult = await response.json();
-      console.log("Payment result:", paymentResult.status);
+      console.log("Payment result:", paymentResult.status, "Detail:", paymentResult.status_detail);
+      console.log("Full payment response:", JSON.stringify(paymentResult));
 
       if (!response.ok) {
         console.error("Payment error:", paymentResult);
