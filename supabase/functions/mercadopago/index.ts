@@ -202,11 +202,20 @@ serve(async (req) => {
         console.error("Error updating pedido:", updateError);
       }
 
+      // Extract PIX data if available
+      const pixData = paymentResult.point_of_interaction?.transaction_data;
+      
       return new Response(JSON.stringify({ 
         success: true,
         paymentId: paymentResult.id,
         status: paymentResult.status,
         statusDetail: paymentResult.status_detail,
+        paymentMethodId: paymentResult.payment_method_id,
+        // PIX specific data
+        pixQrCode: pixData?.qr_code,
+        pixQrCodeBase64: pixData?.qr_code_base64,
+        pixTicketUrl: pixData?.ticket_url,
+        expirationDate: paymentResult.date_of_expiration,
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
