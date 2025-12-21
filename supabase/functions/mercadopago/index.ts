@@ -222,6 +222,76 @@ serve(async (req) => {
       });
     }
 
+    if (action === "create-pix") {
+      const { amount, pedidoId, email, description } = await req.json();
+      
+      console.log(`Creating PIX payment for pedido ${pedidoId}`);
+      
+      const pixPayload = {
+        transaction_amount: Number(amount),
+        description: description || "Fast IPTV - Assinatura",
+        payment_method_id: "pix",
+        payer: {
+          email: email,
+        },
+        external_reference: pedidoId,
+      };
+
+      const response = await fetch("https://api.mercadopago.com/v1/payments", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${MERCADOPAGO_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": `pix-${pedidoId}-${Date.now()}`,
+        },
+        body: JSON.stringify(pixPayload),
+      });
+
+      const pixResult = await response.json();
+      console.log("PIX result:", pixResult.status, "Detail:", pixResult.status_detail);
+      console.log("Full PIX response:", JSON.stringify(pixResult));
+
+      if (!response.ok) {
+        console.error("PIX error:", pixResult);
+        return new Response(JSON.stringify({ 
+          error: true,
+          message: pixResult.message || "PIX creation failed",
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Update pedido with payment id
+      const { error: updateError } = await supabase
+        .from("pedidos")
+        .update({ 
+          mercadopago_payment_id: String(pixResult.id),
+          status_pagamento: "pendente",
+        })
+        .eq("id", pedidoId);
+
+      if (updateError) {
+        console.error("Error updating pedido:", updateError);
+      }
+
+      // Extract PIX data
+      const pixData = pixResult.point_of_interaction?.transaction_data;
+      
+      return new Response(JSON.stringify({ 
+        success: true,
+        paymentId: pixResult.id,
+        status: pixResult.status,
+        pixQrCode: pixData?.qr_code,
+        pixQrCodeBase64: pixData?.qr_code_base64,
+        pixTicketUrl: pixData?.ticket_url,
+        expirationDate: pixResult.date_of_expiration,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Invalid action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
