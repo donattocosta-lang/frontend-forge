@@ -47,30 +47,12 @@ const Index = () => {
         title: "Faça login para continuar",
         description: "Você precisa estar logado para contratar um plano.",
       });
-      navigate('/login', { state: { redirect: '/', planId } });
+      navigate('/login', { state: { redirect: `/checkout?plano_id=${planId}` } });
       return;
     }
 
-    const plano = planos.find(p => p.id === planId);
-    if (!plano) return;
-
-    setSelectedPlan(planId);
-    try {
-      await pedidoService.createPedido(user.id, planId, plano.preco);
-      toast({
-        title: "Pedido criado!",
-        description: "Seu pedido foi criado com sucesso.",
-      });
-      navigate('/dashboard');
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao criar pedido",
-        variant: "destructive",
-      });
-    } finally {
-      setSelectedPlan(null);
-    }
+    // Navigate to checkout page with plan id
+    navigate(`/checkout?plano_id=${planId}`);
   };
 
   const features = [

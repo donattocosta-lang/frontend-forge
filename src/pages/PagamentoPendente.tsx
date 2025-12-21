@@ -1,10 +1,13 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
 
 const PagamentoPendente = () => {
+  const [searchParams] = useSearchParams();
+  const pedidoId = searchParams.get('pedido_id');
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -20,6 +23,12 @@ const PagamentoPendente = () => {
             <p className="text-muted-foreground mb-6">
               Seu pagamento está sendo processado. Assim que confirmado, você receberá um e-mail com mais informações.
             </p>
+            
+            {pedidoId && (
+              <p className="text-sm text-muted-foreground mb-6">
+                ID do pedido: <span className="font-mono">{pedidoId.slice(0, 8)}...</span>
+              </p>
+            )}
             
             <div className="space-y-3">
               <Link to="/dashboard">

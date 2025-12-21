@@ -18,6 +18,7 @@ import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import PagamentoSucesso from "./pages/PagamentoSucesso";
 import PagamentoFalha from "./pages/PagamentoFalha";
 import PagamentoPendente from "./pages/PagamentoPendente";
+import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
             <Route path="/pagamento/falha" element={<PagamentoFalha />} />
             <Route path="/pagamento/pendente" element={<PagamentoPendente />} />
+            <Route path="/checkout" element={<Checkout />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

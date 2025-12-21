@@ -1,10 +1,13 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { XCircle } from 'lucide-react';
 
 const PagamentoFalha = () => {
+  const [searchParams] = useSearchParams();
+  const pedidoId = searchParams.get('pedido_id');
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -22,11 +25,19 @@ const PagamentoFalha = () => {
             </p>
             
             <div className="space-y-3">
-              <Link to="/dashboard">
-                <Button variant="gradient" className="w-full" size="lg">
-                  Tentar Novamente
-                </Button>
-              </Link>
+              {pedidoId ? (
+                <Link to={`/checkout?pedido_id=${pedidoId}`}>
+                  <Button variant="gradient" className="w-full" size="lg">
+                    Tentar Novamente
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/#planos">
+                  <Button variant="gradient" className="w-full" size="lg">
+                    Ver Planos
+                  </Button>
+                </Link>
+              )}
               <Link to="/">
                 <Button variant="outline" className="w-full" size="lg">
                   Voltar ao Início
