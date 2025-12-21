@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Defer profile loading with setTimeout to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
-            loadUserProfile(session.user.id);
+            loadUserProfile(session.user);
           }, 0);
         } else {
           setProfile(null);
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        loadUserProfile(session.user.id);
+        loadUserProfile(session.user);
       } else {
         setIsLoading(false);
       }
@@ -59,14 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadUserProfile = async (userId: string) => {
+  const loadUserProfile = async (authUser: User) => {
     try {
-      const [userProfile, adminStatus] = await Promise.all([
-        usuarioService.getProfile(userId),
-        usuarioService.checkIsAdmin(userId)
+      const [ensuredProfile, adminStatus] = await Promise.all([
+        usuarioService.ensureProfile(authUser),
+        usuarioService.checkIsAdmin(authUser.id)
       ]);
-      
-      setProfile(userProfile);
+
+      setProfile(ensuredProfile);
       setIsAdmin(adminStatus);
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(session);
     
     if (user) {
-      await loadUserProfile(user.id);
+      await loadUserProfile(user);
     }
   };
 
