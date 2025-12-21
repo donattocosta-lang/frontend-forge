@@ -539,6 +539,7 @@ CREATE POLICY "Admins can update trial requests"
 
 -- =====================================================
 -- 19. TRIGGER PARA CRIAR PERFIL AUTOMATICAMENTE
+-- Cria ou atualiza o perfil do usuário quando ele se registra
 -- =====================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
@@ -547,7 +548,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    -- Inserir na tabela de usuários
+    -- Inserir ou atualizar na tabela de usuários
     INSERT INTO public.usuarios (id, email, nome_completo, telefone)
     VALUES (
         NEW.id,
@@ -555,9 +556,12 @@ BEGIN
         COALESCE(NEW.raw_user_meta_data ->> 'nome_completo', split_part(NEW.email, '@', 1)),
         NEW.raw_user_meta_data ->> 'telefone'
     )
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        nome_completo = COALESCE(EXCLUDED.nome_completo, public.usuarios.nome_completo),
+        telefone = COALESCE(EXCLUDED.telefone, public.usuarios.telefone);
     
-    -- Inserir role padrão de cliente
+    -- Inserir role padrão de cliente (ignorar se já existir)
     INSERT INTO public.user_roles (user_id, role)
     VALUES (NEW.id, 'cliente')
     ON CONFLICT (user_id, role) DO NOTHING;
