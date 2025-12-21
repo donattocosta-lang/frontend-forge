@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
@@ -22,25 +21,21 @@ export function MercadoPagoCheckout({ pedidoId, planoNome, valor, userEmail }: M
     const initMP = async () => {
       try {
         // Get public key from edge function
-        const { data, error } = await supabase.functions.invoke('mercadopago', {
-          body: {},
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        // Fallback: try using query param
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago?action=get-public-key`
         );
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch public key');
+        }
+        
         const keyData = await response.json();
         
         if (keyData.publicKey) {
           initMercadoPago(keyData.publicKey, { locale: 'pt-BR' });
           setIsReady(true);
         } else {
-          throw new Error('Failed to get public key');
+          throw new Error('Public key not found in response');
         }
       } catch (error) {
         console.error('Error initializing MercadoPago:', error);
