@@ -610,23 +610,85 @@ CREATE INDEX IF NOT EXISTS idx_planos_ativo ON public.planos(ativo);
 CREATE INDEX IF NOT EXISTS idx_planos_status ON public.planos(status);
 
 -- =====================================================
+-- 22. POLÍTICAS RLS PARA SERVICE ROLE (EDGE FUNCTIONS)
+-- Permite que Edge Functions atualizem pedidos via webhook
+-- =====================================================
+DROP POLICY IF EXISTS "Service role can update orders" ON public.pedidos;
+CREATE POLICY "Service role can update orders"
+    ON public.pedidos FOR UPDATE
+    USING (true)
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role can insert notifications" ON public.notificacoes;
+CREATE POLICY "Service role can insert notifications"
+    ON public.notificacoes FOR INSERT
+    WITH CHECK (true);
+
+-- =====================================================
 -- SCRIPT CONCLUÍDO COM SUCESSO!
 -- =====================================================
 -- 
--- PRÓXIMOS PASSOS:
--- 
--- 1. Configure as variáveis de ambiente na sua aplicação:
+-- =====================================================
+-- PRÓXIMOS PASSOS PARA DEPLOY EXTERNO:
+-- =====================================================
+--
+-- 1. VARIÁVEIS DE AMBIENTE (Frontend - .env ou variáveis do hosting):
 --    VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 --    VITE_SUPABASE_PUBLISHABLE_KEY=sua-anon-key
 --
--- 2. Crie um usuário através da aplicação ou do Supabase Auth
+-- 2. SECRETS DO SUPABASE (Dashboard > Settings > Edge Functions > Secrets):
+--    - MERCADOPAGO_ACCESS_TOKEN: Seu Access Token do MercadoPago
+--    - MERCADOPAGO_PUBLIC_KEY: Sua Public Key do MercadoPago
+--    - SUPABASE_URL: https://seu-projeto.supabase.co
+--    - SUPABASE_SERVICE_ROLE_KEY: Sua Service Role Key do Supabase
 --
--- 3. Para tornar um usuário administrador, execute:
---    INSERT INTO public.user_roles (user_id, role) 
---    VALUES ('UUID-DO-USUARIO', 'admin')
---    ON CONFLICT (user_id, role) DO NOTHING;
+-- 3. DEPLOY DAS EDGE FUNCTIONS:
+--    Copie as pastas de supabase/functions/ para seu projeto:
+--    - mercadopago/index.ts (processa pagamentos)
+--    - mercadopago-webhook/index.ts (recebe notificações do MercadoPago)
+--    
+--    Deploy via CLI:
+--    $ supabase functions deploy mercadopago
+--    $ supabase functions deploy mercadopago-webhook
 --
--- 4. Para encontrar o UUID de um usuário:
---    SELECT id, email FROM auth.users;
+-- 4. CONFIGURAR WEBHOOK NO MERCADOPAGO:
+--    Acesse: https://www.mercadopago.com.br/developers/panel/app
+--    Configure a URL do webhook:
+--    https://seu-projeto.supabase.co/functions/v1/mercadopago-webhook
+--
+-- 5. CRIAR USUÁRIO ADMINISTRADOR:
+--    a) Primeiro, crie um usuário normalmente pela aplicação
+--    b) Encontre o UUID do usuário:
+--       SELECT id, email FROM auth.users;
+--    c) Adicione a role de admin:
+--       INSERT INTO public.user_roles (user_id, role) 
+--       VALUES ('UUID-DO-USUARIO', 'admin')
+--       ON CONFLICT (user_id, role) DO NOTHING;
+--
+-- 6. CONFIGURAR AUTO-CONFIRM EMAIL (Opcional para desenvolvimento):
+--    Dashboard > Authentication > Settings > Email Auth
+--    Desabilite "Confirm email" para testes
+--
+-- 7. TESTAR A INTEGRAÇÃO:
+--    a) Acesse a aplicação e faça login
+--    b) Selecione um plano e vá para checkout
+--    c) Use cartões de teste do MercadoPago:
+--       - Aprovado: 5031 4332 1540 6351 (CVV: 123, Data: qualquer futura)
+--       - Recusado: 5031 4332 1540 6369
+--
+-- =====================================================
+-- ESTRUTURA DAS EDGE FUNCTIONS:
+-- =====================================================
+--
+-- supabase/functions/
+-- ├── mercadopago/
+-- │   └── index.ts          # Processa pagamentos e retorna public key
+-- └── mercadopago-webhook/
+--     └── index.ts          # Recebe notificações do MercadoPago
+--
+-- A função mercadopago suporta as seguintes ações (via query param ?action=):
+-- - get-public-key: Retorna a public key do MercadoPago
+-- - create-preference: Cria uma preferência de pagamento
+-- - process-payment: Processa um pagamento com cartão
 --
 -- =====================================================
