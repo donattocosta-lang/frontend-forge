@@ -6,7 +6,7 @@ interface WhatsAppButtonProps {
 }
 
 export const WhatsAppButton = ({ 
-  phoneNumber = '5511999999999', 
+  phoneNumber = '5527997205108', 
   message = 'Olá! Gostaria de saber mais sobre os planos do Fast IPTV.' 
 }: WhatsAppButtonProps) => {
   const handleClick = () => {
