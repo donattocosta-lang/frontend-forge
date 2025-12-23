@@ -77,7 +77,7 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-2 text-muted-foreground">
                 <Phone className="w-4 h-4 text-primary" />
-                (11) 99999-9999
+                (27) 99720-5108
               </li>
             </ul>
           </div>
