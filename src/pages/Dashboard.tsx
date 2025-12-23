@@ -440,7 +440,11 @@ const Dashboard = () => {
 
                           {pedido.status_pagamento === 'aguardando_pagamento' && (
                             <div className="mt-4 pt-4 border-t border-border">
-                              <Button variant="gradient" size="sm">
+                              <Button 
+                                variant="gradient" 
+                                size="sm"
+                                onClick={() => navigate(`/checkout?plano_id=${pedido.plano_id}`)}
+                              >
                                 Pagar Agora
                               </Button>
                             </div>
