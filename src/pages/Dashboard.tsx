@@ -376,12 +376,13 @@ const Dashboard = () => {
                 <div>
                   <div className="flex items-center justify-between mb-6">
                     <h1 className="font-display text-2xl font-bold">Meus Pedidos</h1>
-                    <Link to="/">
-                      <Button variant="gradient">
-                        <Package className="w-4 h-4 mr-2" />
-                        Novo Plano
-                      </Button>
-                    </Link>
+                    <Button 
+                      variant="gradient"
+                      onClick={() => navigate('/#planos')}
+                    >
+                      <Package className="w-4 h-4 mr-2" />
+                      Novo Plano
+                    </Button>
                   </div>
 
                   {loading ? (
@@ -393,9 +394,12 @@ const Dashboard = () => {
                       <ShoppingBag className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                       <h3 className="font-display text-xl font-semibold mb-2">Nenhum pedido ainda</h3>
                       <p className="text-muted-foreground mb-6">Você ainda não contratou nenhum plano.</p>
-                      <Link to="/">
-                        <Button variant="gradient">Ver Planos Disponíveis</Button>
-                      </Link>
+                      <Button 
+                        variant="gradient"
+                        onClick={() => navigate('/#planos')}
+                      >
+                        Ver Planos Disponíveis
+                      </Button>
                     </div>
                   ) : (
                     <div className="space-y-4">

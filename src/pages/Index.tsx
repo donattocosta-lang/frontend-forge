@@ -3,7 +3,7 @@ import { Footer } from '@/components/Footer';
 import { PlanCard } from '@/components/PlanCard';
 import { Button } from '@/components/ui/button';
 import { Tv, Shield, Clock, Headphones, Play, Zap, Star, ChevronRight, Film, Trophy, Clapperboard } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { planoService, pedidoService } from '@/services/supabase';
@@ -14,6 +14,7 @@ import featuresBg from '@/assets/features-bg.jpg';
 
 const Index = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const [planos, setPlanos] = useState<any[]>([]);
@@ -23,6 +24,15 @@ const Index = () => {
   useEffect(() => {
     loadPlanos();
   }, []);
+
+  // Scroll to plans section if hash is #planos
+  useEffect(() => {
+    if (location.hash === '#planos') {
+      setTimeout(() => {
+        document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, [location.hash]);
 
   const loadPlanos = async () => {
     try {
