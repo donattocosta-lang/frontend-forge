@@ -39,6 +39,11 @@ const Checkout = () => {
       return;
     }
 
+    // Prevent re-running if we already have a pedido
+    if (pedido) return;
+
+    let isMounted = true;
+
     const initCheckout = async () => {
       try {
         if (pedidoId) {
@@ -46,7 +51,7 @@ const Checkout = () => {
           const pedidos = await pedidoService.getPedidos(user!.id);
           const existingPedido = pedidos.find(p => p.id === pedidoId);
           
-          if (existingPedido) {
+          if (existingPedido && isMounted) {
             setPedido({
               id: existingPedido.id,
               plano_id: existingPedido.plano_id,
@@ -56,7 +61,7 @@ const Checkout = () => {
                 duracao_dias: existingPedido.plano.duracao_dias,
               } : undefined,
             });
-          } else {
+          } else if (isMounted) {
             toast({
               title: 'Pedido não encontrado',
               description: 'Não foi possível encontrar este pedido.',
@@ -65,47 +70,76 @@ const Checkout = () => {
             navigate('/');
           }
         } else if (planoId) {
-          // Create new pedido
-          const planos = await planoService.getPlanos();
-          const plano = planos.find(p => p.id === planoId);
-          
-          if (!plano) {
-            toast({
-              title: 'Plano não encontrado',
-              description: 'O plano selecionado não está disponível.',
-              variant: 'destructive',
-            });
-            navigate('/');
-            return;
-          }
+          // Check if there's already a pending order for this plan
+          const existingPedidos = await pedidoService.getPedidos(user!.id);
+          const pendingPedido = existingPedidos.find(
+            p => p.plano_id === planoId && p.status_pagamento === 'aguardando_pagamento'
+          );
 
-          const novoPedido = await pedidoService.createPedido(user!.id, planoId, plano.preco);
-          setPedido({
-            id: novoPedido.id,
-            plano_id: planoId,
-            valor: plano.preco,
-            plano: {
-              nome_comercial: plano.nome_comercial,
-              duracao_dias: plano.duracao_dias,
-            },
-          });
+          if (pendingPedido && isMounted) {
+            // Use existing pending order
+            setPedido({
+              id: pendingPedido.id,
+              plano_id: pendingPedido.plano_id,
+              valor: pendingPedido.valor,
+              plano: pendingPedido.plano ? {
+                nome_comercial: pendingPedido.plano.nome_comercial,
+                duracao_dias: pendingPedido.plano.duracao_dias,
+              } : undefined,
+            });
+          } else {
+            // Create new pedido
+            const planos = await planoService.getPlanos();
+            const plano = planos.find(p => p.id === planoId);
+            
+            if (!plano) {
+              if (isMounted) {
+                toast({
+                  title: 'Plano não encontrado',
+                  description: 'O plano selecionado não está disponível.',
+                  variant: 'destructive',
+                });
+                navigate('/');
+              }
+              return;
+            }
+
+            if (isMounted) {
+              const novoPedido = await pedidoService.createPedido(user!.id, planoId, plano.preco);
+              setPedido({
+                id: novoPedido.id,
+                plano_id: planoId,
+                valor: plano.preco,
+                plano: {
+                  nome_comercial: plano.nome_comercial,
+                  duracao_dias: plano.duracao_dias,
+                },
+              });
+            }
+          }
         } else {
-          navigate('/');
+          if (isMounted) navigate('/');
         }
       } catch (error: any) {
         console.error('Error initializing checkout:', error);
-        toast({
-          title: 'Erro',
-          description: error.message || 'Erro ao carregar checkout.',
-          variant: 'destructive',
-        });
+        if (isMounted) {
+          toast({
+            title: 'Erro',
+            description: error.message || 'Erro ao carregar checkout.',
+            variant: 'destructive',
+          });
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     initCheckout();
-  }, [pedidoId, planoId, user, isAuthenticated, authLoading, navigate, toast]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pedidoId, planoId, user?.id, isAuthenticated, authLoading]);
 
   if (authLoading || loading) {
     return (
