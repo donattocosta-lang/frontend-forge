@@ -104,7 +104,7 @@ const Login = () => {
                   <input type="checkbox" className="rounded border-border" />
                   <span className="text-muted-foreground">Lembrar de mim</span>
                 </label>
-                <a href="#" className="text-primary hover:underline">Esqueceu a senha?</a>
+                <Link to="/esqueci-senha" className="text-primary hover:underline">Esqueceu a senha?</Link>
               </div>
 
               <Button type="submit" variant="gradient" className="w-full" size="lg" disabled={loading}>
