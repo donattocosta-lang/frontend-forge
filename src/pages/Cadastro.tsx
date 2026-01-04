@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, UserPlus, Loader2, Check } from 'lucide-react';
+import { CountryCodeSelect } from '@/components/CountryCodeSelect';
 
 const Cadastro = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const Cadastro = () => {
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [countryCode, setCountryCode] = useState('+55');
   const [formData, setFormData] = useState({
     nome_completo: '',
     email: '',
@@ -22,6 +24,14 @@ const Cadastro = () => {
     senha: '',
     confirmarSenha: '',
   });
+
+  const formatPhoneForStorage = (phone: string, code: string) => {
+    if (!phone) return '';
+    // Remove tudo que não é número
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone) return '';
+    return `${code} ${cleanPhone}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,11 +57,13 @@ const Cadastro = () => {
     setLoading(true);
 
     try {
+      const telefoneFormatado = formatPhoneForStorage(formData.telefone, countryCode);
+      
       await register({
         email: formData.email,
         senha: formData.senha,
         nome_completo: formData.nome_completo,
-        telefone: formData.telefone || undefined,
+        telefone: telefoneFormatado || undefined,
       });
       
       toast({
@@ -124,13 +136,17 @@ const Cadastro = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="telefone">Telefone (opcional)</Label>
-                <Input
-                  id="telefone"
-                  type="tel"
-                  placeholder="(11) 99999-9999"
-                  value={formData.telefone}
-                  onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                />
+                <div className="flex gap-2">
+                  <CountryCodeSelect value={countryCode} onChange={setCountryCode} />
+                  <Input
+                    id="telefone"
+                    type="tel"
+                    placeholder="11 99999-9999"
+                    value={formData.telefone}
+                    onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                    className="flex-1"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
