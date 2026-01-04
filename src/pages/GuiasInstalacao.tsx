@@ -207,7 +207,7 @@ const GuiasInstalacao = () => {
             </p>
             <Button variant="gradient" asChild>
               <a 
-                href="https://wa.me/5511999999999?text=Olá! Preciso de ajuda com a instalação do IPTV."
+                href="https://wa.me/5527997205108?text=Olá! Preciso de ajuda com a instalação do IPTV."
                 target="_blank"
                 rel="noopener noreferrer"
               >
