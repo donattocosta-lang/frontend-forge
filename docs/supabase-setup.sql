@@ -336,10 +336,11 @@ ALTER TABLE public.iptv_playlists ALTER COLUMN url_m3u DROP NOT NULL;
 -- =====================================================
 -- 8.1. STORAGE BUCKET: m3u-files
 -- Armazena arquivos M3U uploaded pelos admins
+-- Limite de 150MB por arquivo para suportar playlists grandes
 -- =====================================================
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('m3u-files', 'm3u-files', false)
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('m3u-files', 'm3u-files', false, 157286400) -- 150MB em bytes
+ON CONFLICT (id) DO UPDATE SET file_size_limit = 157286400;
 
 -- Políticas de acesso ao bucket m3u-files
 DROP POLICY IF EXISTS "Admins can upload m3u files" ON storage.objects;
