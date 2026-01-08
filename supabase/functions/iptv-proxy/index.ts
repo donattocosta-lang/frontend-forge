@@ -161,17 +161,31 @@ serve(async (req) => {
         });
       }
 
-      const content = await fileData.text();
-      console.log("IPTV Proxy: M3U file content length:", content.length);
+      // IMPORTANT: avoid loading the entire file into memory (large M3Us can exceed worker limits)
+      const anyData = fileData as any;
+      const size = typeof anyData.size === "number" ? anyData.size : undefined;
+      console.log("IPTV Proxy: M3U file size bytes:", size ?? "unknown");
 
-      if (!content || content.length === 0) {
+      if (size === 0) {
         return new Response(JSON.stringify({ error: "Arquivo M3U vazio" }), {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(content, {
+      const stream =
+        typeof anyData.stream === "function"
+          ? (anyData.stream() as ReadableStream<Uint8Array>)
+          : ((anyData.body as ReadableStream<Uint8Array> | null) ?? null);
+
+      if (!stream) {
+        return new Response(JSON.stringify({ error: "Arquivo M3U indisponível" }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(stream, {
         status: 200,
         headers: {
           ...corsHeaders,
@@ -242,17 +256,25 @@ serve(async (req) => {
         );
       }
 
-      const content = await response.text();
-      console.log("IPTV Proxy: M3U content length:", content.length);
+      // IMPORTANT: avoid loading the entire response into memory (large M3Us can exceed worker limits)
+      const contentLengthHeader = response.headers.get("content-length");
+      console.log("IPTV Proxy: M3U content-length:", contentLengthHeader ?? "unknown");
 
-      if (!content || content.length === 0) {
+      if (contentLengthHeader === "0") {
         return new Response(JSON.stringify({ error: "Lista M3U vazia" }), {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(content, {
+      if (!response.body) {
+        return new Response(JSON.stringify({ error: "Lista M3U sem conteúdo" }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(response.body, {
         status: 200,
         headers: {
           ...corsHeaders,
