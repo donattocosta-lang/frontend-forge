@@ -436,9 +436,9 @@ const Dashboard = () => {
                   </div>
 
                   {selectedPlaylist ? (
-                    <IPTVPlayer 
-                      playlistUrl={selectedPlaylist.url_m3u} 
-                      playlistName={selectedPlaylist.nome} 
+                    <IPTVPlayer
+                      playlistId={selectedPlaylist.id}
+                      playlistName={selectedPlaylist.nome}
                     />
                   ) : (
                     <div className="text-center py-12 gradient-border rounded-2xl">
