@@ -29,7 +29,10 @@ interface Channel {
 }
 
 interface IPTVPlayerProps {
-  playlistUrl: string;
+  /** Preferred (doesn't expose credentials in requests) */
+  playlistId?: string;
+  /** Backwards-compatible fallback */
+  playlistUrl?: string;
   playlistName?: string;
 }
 
@@ -63,7 +66,7 @@ const parseM3U = (content: string): Channel[] => {
   return channels;
 };
 
-export const IPTVPlayer = ({ playlistUrl, playlistName = 'IPTV Player' }: IPTVPlayerProps) => {
+export const IPTVPlayer = ({ playlistId, playlistUrl, playlistName = 'IPTV Player' }: IPTVPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -87,47 +90,58 @@ export const IPTVPlayer = ({ playlistUrl, playlistName = 'IPTV Player' }: IPTVPl
   
   let controlsTimeout: NodeJS.Timeout;
 
-  // Load playlist via proxy
+  // Load playlist via backend function (avoids CORS)
   useEffect(() => {
     const loadPlaylist = async () => {
       setIsLoading(true);
       setError(null);
-      
+
       try {
-        // Get user session for auth
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error('Usuário não autenticado');
+        const body = playlistId
+          ? { playlistId }
+          : playlistUrl
+            ? { url: playlistUrl }
+            : null;
+
+        if (!body) {
+          throw new Error('Playlist não informada');
         }
 
-        // Use edge function proxy to avoid CORS
-        const proxyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/iptv-proxy?url=${encodeURIComponent(playlistUrl)}`;
-        
-        const response = await fetch(proxyUrl, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
+        const { data, error: fnError } = await supabase.functions.invoke('iptv-proxy', {
+          body,
         });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Falha ao carregar playlist');
+
+        if (fnError) {
+          // Supabase Functions errors often include a Response in `context`
+          let message = fnError.message || 'Falha ao carregar playlist';
+          try {
+            const ctx = (fnError as any)?.context;
+            const payload = ctx ? await ctx.json().catch(() => null) : null;
+            if (payload?.error) message = payload.error;
+          } catch {
+            // ignore
+          }
+          throw new Error(message);
         }
-        
-        const content = await response.text();
+
+        const content = typeof data === 'string' ? data : '';
+        if (!content) {
+          throw new Error('Conteúdo da playlist vazio');
+        }
+
         const parsedChannels = parseM3U(content);
-        
+
         if (parsedChannels.length === 0) {
           throw new Error('Nenhum canal encontrado na playlist');
         }
-        
+
         setChannels(parsedChannels);
         setFilteredChannels(parsedChannels);
-        
+
         // Extract unique groups
-        const uniqueGroups = ['Todos', ...new Set(parsedChannels.map(c => c.group || 'Geral'))];
+        const uniqueGroups = ['Todos', ...new Set(parsedChannels.map((c) => c.group || 'Geral'))];
         setGroups(uniqueGroups);
-        
+
         // Auto-select first channel
         setSelectedChannel(parsedChannels[0]);
       } catch (err: any) {
@@ -138,10 +152,10 @@ export const IPTVPlayer = ({ playlistUrl, playlistName = 'IPTV Player' }: IPTVPl
       }
     };
 
-    if (playlistUrl) {
+    if (playlistId || playlistUrl) {
       loadPlaylist();
     }
-  }, [playlistUrl]);
+  }, [playlistId, playlistUrl]);
 
   // Filter channels
   useEffect(() => {
