@@ -865,6 +865,8 @@ CREATE POLICY "Service role can insert notifications"
 -- - Verifica se o usuário tem acesso à playlist (tabela iptv_playlists)
 -- - Para URLs: busca a URL M3U armazenada no banco
 -- - Para arquivos: busca do storage usando service role key
+-- - STREAMING: resposta é enviada em chunks para evitar estouro de memória
+--   (arquivos M3U grandes não são carregados inteiros na RAM)
 -- - Fallback automático de HTTP para HTTPS se o servidor retornar 404
 -- - Timeout de 30 segundos para evitar travamentos
 -- - Headers User-Agent para simular navegador (alguns provedores bloqueiam bots)
