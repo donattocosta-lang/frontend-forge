@@ -13,9 +13,12 @@ serve(async (req) => {
   }
 
   try {
+    console.log("IPTV Proxy: Request received");
+    
     // Get the authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      console.log("IPTV Proxy: No authorization header");
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -30,66 +33,123 @@ serve(async (req) => {
     });
 
     // Verify user is authenticated
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.log("IPTV Proxy: Invalid token", claimsError);
       return new Response(JSON.stringify({ error: "Usuário não autenticado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const userId = claimsData.claims.sub;
+    console.log("IPTV Proxy: User authenticated:", userId);
+
     // Get the M3U URL from query params
     const url = new URL(req.url);
     const m3uUrl = url.searchParams.get("url");
 
     if (!m3uUrl) {
+      console.log("IPTV Proxy: No M3U URL provided");
       return new Response(JSON.stringify({ error: "URL M3U não fornecida" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log("IPTV Proxy: Fetching M3U from:", m3uUrl);
+
     // Verify user has access to this playlist
     const { data: playlist, error: playlistError } = await supabase
       .from("iptv_playlists")
       .select("*")
-      .eq("usuario_id", user.id)
+      .eq("usuario_id", userId)
       .eq("url_m3u", m3uUrl)
       .eq("ativo", true)
-      .single();
+      .maybeSingle();
 
-    if (playlistError || !playlist) {
+    if (playlistError) {
+      console.log("IPTV Proxy: Database error:", playlistError);
+      return new Response(JSON.stringify({ error: "Erro ao verificar acesso" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!playlist) {
+      console.log("IPTV Proxy: Playlist not found or no access for user:", userId);
       return new Response(JSON.stringify({ error: "Playlist não encontrada ou sem acesso" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch the M3U content
-    const response = await fetch(m3uUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
+    console.log("IPTV Proxy: Playlist access verified:", playlist.id);
 
-    if (!response.ok) {
-      return new Response(JSON.stringify({ error: "Falha ao buscar lista M3U" }), {
+    // Fetch the M3U content with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    try {
+      const response = await fetch(m3uUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "*/*",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      clearTimeout(timeoutId);
+
+      console.log("IPTV Proxy: M3U fetch response status:", response.status);
+
+      if (!response.ok) {
+        console.log("IPTV Proxy: M3U fetch failed with status:", response.status);
+        return new Response(JSON.stringify({ error: `Falha ao buscar lista M3U (status: ${response.status})` }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const content = await response.text();
+      console.log("IPTV Proxy: M3U content length:", content.length);
+
+      if (!content || content.length === 0) {
+        return new Response(JSON.stringify({ error: "Lista M3U vazia" }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(content, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      console.error("IPTV Proxy: Fetch error:", fetchError.name, fetchError.message);
+      
+      if (fetchError.name === 'AbortError') {
+        return new Response(JSON.stringify({ error: "Tempo limite excedido ao buscar lista M3U" }), {
+          status: 504,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      return new Response(JSON.stringify({ error: `Erro ao buscar lista: ${fetchError.message}` }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const content = await response.text();
-
-    return new Response(content, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "text/plain; charset=utf-8",
-      },
-    });
-  } catch (error) {
-    console.error("Erro no proxy IPTV:", error);
+  } catch (error: any) {
+    console.error("IPTV Proxy: General error:", error);
     return new Response(JSON.stringify({ error: "Erro interno do servidor" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
