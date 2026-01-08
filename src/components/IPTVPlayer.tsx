@@ -19,6 +19,7 @@ import {
   PictureInPicture2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Channel {
   name: string;
@@ -86,17 +87,33 @@ export const IPTVPlayer = ({ playlistUrl, playlistName = 'IPTV Player' }: IPTVPl
   
   let controlsTimeout: NodeJS.Timeout;
 
-  // Load playlist
+  // Load playlist via proxy
   useEffect(() => {
     const loadPlaylist = async () => {
       setIsLoading(true);
       setError(null);
       
       try {
-        const response = await fetch(playlistUrl);
-        if (!response.ok) {
-          throw new Error('Falha ao carregar playlist');
+        // Get user session for auth
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('Usuário não autenticado');
         }
+
+        // Use edge function proxy to avoid CORS
+        const proxyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/iptv-proxy?url=${encodeURIComponent(playlistUrl)}`;
+        
+        const response = await fetch(proxyUrl, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Falha ao carregar playlist');
+        }
+        
         const content = await response.text();
         const parsedChannels = parseM3U(content);
         
@@ -114,6 +131,7 @@ export const IPTVPlayer = ({ playlistUrl, playlistName = 'IPTV Player' }: IPTVPl
         // Auto-select first channel
         setSelectedChannel(parsedChannels[0]);
       } catch (err: any) {
+        console.error('Erro ao carregar playlist:', err);
         setError(err.message || 'Erro ao carregar playlist');
       } finally {
         setIsLoading(false);
