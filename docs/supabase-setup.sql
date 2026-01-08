@@ -287,12 +287,15 @@ END $$;
 -- =====================================================
 -- 8. TABELA: iptv_playlists
 -- Armazena playlists M3U de IPTV por usuário
+-- Suporta dois tipos de fonte: URL externa ou arquivo uploaded
 -- =====================================================
 CREATE TABLE IF NOT EXISTS public.iptv_playlists (
     id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     usuario_id UUID NOT NULL,
     nome TEXT NOT NULL DEFAULT 'Playlist Principal',
-    url_m3u TEXT NOT NULL,
+    url_m3u TEXT,  -- URL M3U externa (opcional se usar arquivo)
+    arquivo_m3u TEXT,  -- Caminho do arquivo no storage (opcional se usar URL)
+    tipo_fonte TEXT NOT NULL DEFAULT 'url',  -- 'url' ou 'arquivo'
     ativo BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -308,7 +311,13 @@ BEGIN
         ALTER TABLE public.iptv_playlists ADD COLUMN nome TEXT NOT NULL DEFAULT 'Playlist Principal';
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'iptv_playlists' AND column_name = 'url_m3u') THEN
-        ALTER TABLE public.iptv_playlists ADD COLUMN url_m3u TEXT NOT NULL DEFAULT '';
+        ALTER TABLE public.iptv_playlists ADD COLUMN url_m3u TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'iptv_playlists' AND column_name = 'arquivo_m3u') THEN
+        ALTER TABLE public.iptv_playlists ADD COLUMN arquivo_m3u TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'iptv_playlists' AND column_name = 'tipo_fonte') THEN
+        ALTER TABLE public.iptv_playlists ADD COLUMN tipo_fonte TEXT NOT NULL DEFAULT 'url';
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'iptv_playlists' AND column_name = 'ativo') THEN
         ALTER TABLE public.iptv_playlists ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT TRUE;
@@ -321,8 +330,56 @@ BEGIN
     END IF;
 END $$;
 
--- Criar índice único para usuario_id + url_m3u
-CREATE UNIQUE INDEX IF NOT EXISTS iptv_playlists_usuario_url_unique ON public.iptv_playlists(usuario_id, url_m3u);
+-- Tornar url_m3u opcional (pode ser nulo se usar arquivo)
+ALTER TABLE public.iptv_playlists ALTER COLUMN url_m3u DROP NOT NULL;
+
+-- =====================================================
+-- 8.1. STORAGE BUCKET: m3u-files
+-- Armazena arquivos M3U uploaded pelos admins
+-- =====================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('m3u-files', 'm3u-files', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Políticas de acesso ao bucket m3u-files
+DROP POLICY IF EXISTS "Admins can upload m3u files" ON storage.objects;
+CREATE POLICY "Admins can upload m3u files"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'm3u-files' 
+  AND has_role(auth.uid(), 'admin'::app_role)
+);
+
+DROP POLICY IF EXISTS "Admins can update m3u files" ON storage.objects;
+CREATE POLICY "Admins can update m3u files"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'm3u-files' 
+  AND has_role(auth.uid(), 'admin'::app_role)
+);
+
+DROP POLICY IF EXISTS "Admins can delete m3u files" ON storage.objects;
+CREATE POLICY "Admins can delete m3u files"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'm3u-files' 
+  AND has_role(auth.uid(), 'admin'::app_role)
+);
+
+DROP POLICY IF EXISTS "Users can read their own m3u files" ON storage.objects;
+CREATE POLICY "Users can read their own m3u files"
+ON storage.objects FOR SELECT
+USING (
+  bucket_id = 'm3u-files' 
+  AND (
+    has_role(auth.uid(), 'admin'::app_role)
+    OR EXISTS (
+      SELECT 1 FROM public.iptv_playlists 
+      WHERE usuario_id = auth.uid() 
+      AND arquivo_m3u = storage.objects.name
+    )
+  )
+);
 
 -- =====================================================
 -- 9. ADICIONAR FOREIGN KEYS (SE NÃO EXISTIREM)
@@ -790,12 +847,24 @@ CREATE POLICY "Service role can insert notifications"
 -- =====================================================
 --
 -- A função iptv-proxy atua como proxy server-side para buscar playlists M3U
--- de provedores IPTV externos, contornando restrições de CORS do navegador.
+-- de provedores IPTV externos ou do storage interno, contornando restrições 
+-- de CORS do navegador.
+--
+-- TIPOS DE FONTE SUPORTADOS:
+-- 1. URL externa (tipo_fonte = 'url'):
+--    - Busca o M3U de uma URL externa (ex: provedor IPTV)
+--    - Sujeito a problemas de conectividade/bloqueio do provedor
+--
+-- 2. Arquivo uploaded (tipo_fonte = 'arquivo'):
+--    - Busca o M3U do bucket 'm3u-files' no storage
+--    - Mais confiável, não depende de servidores externos
+--    - Ideal quando o provedor bloqueia IPs de datacenter
 --
 -- CARACTERÍSTICAS:
 -- - Valida autenticação JWT do usuário
 -- - Verifica se o usuário tem acesso à playlist (tabela iptv_playlists)
--- - Busca a URL M3U armazenada no banco (nunca expõe credenciais ao frontend)
+-- - Para URLs: busca a URL M3U armazenada no banco
+-- - Para arquivos: busca do storage usando service role key
 -- - Fallback automático de HTTP para HTTPS se o servidor retornar 404
 -- - Timeout de 30 segundos para evitar travamentos
 -- - Headers User-Agent para simular navegador (alguns provedores bloqueiam bots)
@@ -810,14 +879,14 @@ CREATE POLICY "Service role can insert notifications"
 --
 -- PARÂMETROS (POST body ou query string):
 -- - playlistId: UUID da playlist (preferido - mais seguro)
--- - url: URL M3U direta (fallback - menos seguro, expõe credenciais na requisição)
+-- - url: URL M3U direta (fallback - menos seguro)
 --
 -- RESPOSTAS:
 -- - 200: Conteúdo M3U em text/plain
--- - 400: playlistId ou url não fornecido
+-- - 400: playlistId ou url não fornecido / playlist sem URL configurada
 -- - 401: Usuário não autenticado
 -- - 403: Playlist não encontrada ou usuário sem acesso
--- - 502: Falha ao buscar M3U do provedor (servidor retornou erro)
+-- - 502: Falha ao buscar M3U (provedor ou storage retornou erro)
 -- - 504: Timeout ao buscar M3U
 --
 -- CONFIGURAÇÃO NO config.toml:
@@ -826,8 +895,35 @@ CREATE POLICY "Service role can insert notifications"
 --
 -- SEGURANÇA:
 -- - A URL M3U (com credenciais) é armazenada apenas no banco de dados
+-- - Arquivos M3U são armazenados em bucket privado
 -- - O frontend só envia o playlistId, nunca a URL com senha
 -- - Logs nunca expõem username/password (são redactados)
 -- - Apenas o dono da playlist pode acessá-la (RLS + verificação no código)
+--
+-- =====================================================
+-- STORAGE: m3u-files bucket
+-- =====================================================
+--
+-- Bucket privado para armazenar arquivos M3U uploaded.
+--
+-- ESTRUTURA:
+-- m3u-files/
+-- └── {usuario_id}/
+--     └── {timestamp}.m3u
+--
+-- POLÍTICAS:
+-- - Admins podem fazer upload, update e delete
+-- - Usuários podem ler apenas arquivos de suas próprias playlists
+--
+-- VANTAGENS DO UPLOAD:
+-- - Evita problemas de CORS com provedores IPTV
+-- - Evita bloqueio de IP de datacenter
+-- - Credenciais do provedor não ficam expostas no banco
+-- - Funciona mesmo se o servidor do provedor estiver offline
+--
+-- DESVANTAGENS:
+-- - URLs de stream dentro do M3U ainda apontam para o provedor
+-- - Se streams expirarem, os canais não vão reproduzir
+-- - Arquivo precisa ser atualizado manualmente se playlist mudar
 --
 -- =====================================================

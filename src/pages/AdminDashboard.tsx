@@ -33,7 +33,9 @@ import {
   XCircle,
   Tv,
   Trash2,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Upload,
+  FileText
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -94,8 +96,10 @@ const AdminDashboard = () => {
   const [newPlaylist, setNewPlaylist] = useState({
     usuario_id: '',
     nome: 'Playlist Principal',
-    url_m3u: ''
+    url_m3u: '',
+    tipo_fonte: 'url' as 'url' | 'arquivo',
   });
+  const [m3uFile, setM3uFile] = useState<File | null>(null);
   const [savingPlaylist, setSavingPlaylist] = useState(false);
 
   useEffect(() => {
@@ -271,16 +275,33 @@ const AdminDashboard = () => {
   }
 
   const handleCreatePlaylist = async () => {
-    if (!newPlaylist.usuario_id || !newPlaylist.url_m3u) {
-      toast({ title: "Erro", description: "Preencha todos os campos", variant: "destructive" });
+    if (!newPlaylist.usuario_id) {
+      toast({ title: "Erro", description: "Selecione um cliente", variant: "destructive" });
       return;
     }
+
+    // Validate based on source type
+    if (newPlaylist.tipo_fonte === 'url' && !newPlaylist.url_m3u) {
+      toast({ title: "Erro", description: "Informe a URL M3U", variant: "destructive" });
+      return;
+    }
+
+    if (newPlaylist.tipo_fonte === 'arquivo' && !m3uFile) {
+      toast({ title: "Erro", description: "Selecione um arquivo M3U", variant: "destructive" });
+      return;
+    }
+
     setSavingPlaylist(true);
     try {
-      await iptvService.createPlaylist(newPlaylist.usuario_id, newPlaylist.nome, newPlaylist.url_m3u);
+      if (newPlaylist.tipo_fonte === 'arquivo' && m3uFile) {
+        await iptvService.createPlaylistWithFile(newPlaylist.usuario_id, newPlaylist.nome, m3uFile);
+      } else {
+        await iptvService.createPlaylist(newPlaylist.usuario_id, newPlaylist.nome, newPlaylist.url_m3u);
+      }
       toast({ title: "Playlist criada", description: "Playlist adicionada com sucesso." });
       setIptvDialogOpen(false);
-      setNewPlaylist({ usuario_id: '', nome: 'Playlist Principal', url_m3u: '' });
+      setNewPlaylist({ usuario_id: '', nome: 'Playlist Principal', url_m3u: '', tipo_fonte: 'url' });
+      setM3uFile(null);
       loadData();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -766,7 +787,8 @@ const AdminDashboard = () => {
                           <tr>
                             <th className="text-left py-4 px-4 text-sm font-medium">Cliente</th>
                             <th className="text-left py-4 px-4 text-sm font-medium">Nome Playlist</th>
-                            <th className="text-left py-4 px-4 text-sm font-medium">URL M3U</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Fonte</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">URL/Arquivo</th>
                             <th className="text-left py-4 px-4 text-sm font-medium">Status</th>
                             <th className="text-left py-4 px-4 text-sm font-medium">Ações</th>
                           </tr>
@@ -782,7 +804,20 @@ const AdminDashboard = () => {
                               </td>
                               <td className="py-4 px-4">{playlist.nome}</td>
                               <td className="py-4 px-4">
-                                <span className="text-xs text-muted-foreground truncate max-w-[200px] block">{playlist.url_m3u}</span>
+                                <span className={`px-2 py-1 text-xs rounded-full flex items-center gap-1 w-fit ${
+                                  playlist.tipo_fonte === 'arquivo' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
+                                }`}>
+                                  {playlist.tipo_fonte === 'arquivo' ? (
+                                    <><FileText className="w-3 h-3" /> Arquivo</>
+                                  ) : (
+                                    <><LinkIcon className="w-3 h-3" /> URL</>
+                                  )}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className="text-xs text-muted-foreground truncate max-w-[200px] block">
+                                  {playlist.tipo_fonte === 'arquivo' ? playlist.arquivo_m3u : playlist.url_m3u}
+                                </span>
                               </td>
                               <td className="py-4 px-4">
                                 <span className={`px-2 py-1 text-xs rounded-full ${playlist.ativo ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'}`}>
@@ -809,7 +844,7 @@ const AdminDashboard = () => {
 
       {/* IPTV Playlist Dialog */}
       <Dialog open={iptvDialogOpen} onOpenChange={setIptvDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Nova Playlist IPTV</DialogTitle>
           </DialogHeader>
@@ -830,11 +865,75 @@ const AdminDashboard = () => {
               <Input value={newPlaylist.nome} onChange={(e) => setNewPlaylist({...newPlaylist, nome: e.target.value})} className="mt-2" />
             </div>
             <div>
-              <Label>URL M3U</Label>
-              <Input value={newPlaylist.url_m3u} onChange={(e) => setNewPlaylist({...newPlaylist, url_m3u: e.target.value})} className="mt-2" placeholder="https://..." />
+              <Label>Tipo de Fonte</Label>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant={newPlaylist.tipo_fonte === 'url' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setNewPlaylist({...newPlaylist, tipo_fonte: 'url'})}
+                  className="flex-1"
+                >
+                  <LinkIcon className="w-4 h-4 mr-2" />
+                  URL
+                </Button>
+                <Button
+                  type="button"
+                  variant={newPlaylist.tipo_fonte === 'arquivo' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setNewPlaylist({...newPlaylist, tipo_fonte: 'arquivo'})}
+                  className="flex-1"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Arquivo
+                </Button>
+              </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIptvDialogOpen(false)}>Cancelar</Button>
+
+            {newPlaylist.tipo_fonte === 'url' ? (
+              <div>
+                <Label>URL M3U</Label>
+                <Input 
+                  value={newPlaylist.url_m3u} 
+                  onChange={(e) => setNewPlaylist({...newPlaylist, url_m3u: e.target.value})} 
+                  className="mt-2" 
+                  placeholder="https://..." 
+                />
+              </div>
+            ) : (
+              <div>
+                <Label>Arquivo M3U</Label>
+                <div className="mt-2">
+                  <Input
+                    type="file"
+                    accept=".m3u,.m3u8,audio/x-mpegurl,application/x-mpegurl"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setM3uFile(file);
+                    }}
+                    className="cursor-pointer"
+                  />
+                  {m3uFile && (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
+                      {m3uFile.name} ({(m3uFile.size / 1024).toFixed(1)} KB)
+                    </p>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Upload do arquivo M3U evita problemas de CORS e credenciais expiradas.
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => {
+                setIptvDialogOpen(false);
+                setM3uFile(null);
+                setNewPlaylist({ usuario_id: '', nome: 'Playlist Principal', url_m3u: '', tipo_fonte: 'url' });
+              }}>
+                Cancelar
+              </Button>
               <Button variant="gradient" onClick={handleCreatePlaylist} disabled={savingPlaylist}>
                 {savingPlaylist ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
                 Criar Playlist

@@ -55,9 +55,14 @@ serve(async (req) => {
     // Create backend client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+
+    // Service client for storage access
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify user is authenticated
     const token = authHeader.replace("Bearer ", "");
@@ -136,7 +141,56 @@ serve(async (req) => {
 
     console.log("IPTV Proxy: Playlist access verified:", playlist.id);
 
+    // Check if playlist uses file or URL
+    const tipoFonte = (playlist as any).tipo_fonte || 'url';
+    const arquivoM3u = (playlist as any).arquivo_m3u;
+
+    // If playlist uses uploaded file, fetch from storage
+    if (tipoFonte === 'arquivo' && arquivoM3u) {
+      console.log("IPTV Proxy: Fetching M3U from storage:", arquivoM3u);
+
+      const { data: fileData, error: fileError } = await supabaseAdmin.storage
+        .from('m3u-files')
+        .download(arquivoM3u);
+
+      if (fileError || !fileData) {
+        console.log("IPTV Proxy: Storage fetch error:", fileError);
+        return new Response(JSON.stringify({ error: "Erro ao buscar arquivo M3U" }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const content = await fileData.text();
+      console.log("IPTV Proxy: M3U file content length:", content.length);
+
+      if (!content || content.length === 0) {
+        return new Response(JSON.stringify({ error: "Arquivo M3U vazio" }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(content, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
+    }
+
+    // Otherwise, fetch from external URL
     const effectiveM3uUrl = playlist.url_m3u;
+    
+    if (!effectiveM3uUrl) {
+      console.log("IPTV Proxy: No URL configured for playlist");
+      return new Response(JSON.stringify({ error: "Playlist sem URL configurada" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     console.log("IPTV Proxy: Fetching M3U from:", redactSensitiveUrl(effectiveM3uUrl));
 
     // Fetch the M3U content with timeout
