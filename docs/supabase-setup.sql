@@ -285,7 +285,47 @@ BEGIN
 END $$;
 
 -- =====================================================
--- 8. ADICIONAR FOREIGN KEYS (SE NÃO EXISTIREM)
+-- 8. TABELA: iptv_playlists
+-- Armazena playlists M3U de IPTV por usuário
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.iptv_playlists (
+    id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    usuario_id UUID NOT NULL,
+    nome TEXT NOT NULL DEFAULT 'Playlist Principal',
+    url_m3u TEXT NOT NULL,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Adicionar colunas que podem estar faltando
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'iptv_playlists' AND column_name = 'usuario_id') THEN
+        ALTER TABLE public.iptv_playlists ADD COLUMN usuario_id UUID NOT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'iptv_playlists' AND column_name = 'nome') THEN
+        ALTER TABLE public.iptv_playlists ADD COLUMN nome TEXT NOT NULL DEFAULT 'Playlist Principal';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'iptv_playlists' AND column_name = 'url_m3u') THEN
+        ALTER TABLE public.iptv_playlists ADD COLUMN url_m3u TEXT NOT NULL DEFAULT '';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'iptv_playlists' AND column_name = 'ativo') THEN
+        ALTER TABLE public.iptv_playlists ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT TRUE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'iptv_playlists' AND column_name = 'created_at') THEN
+        ALTER TABLE public.iptv_playlists ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'iptv_playlists' AND column_name = 'updated_at') THEN
+        ALTER TABLE public.iptv_playlists ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
+    END IF;
+END $$;
+
+-- Criar índice único para usuario_id + url_m3u
+CREATE UNIQUE INDEX IF NOT EXISTS iptv_playlists_usuario_url_unique ON public.iptv_playlists(usuario_id, url_m3u);
+
+-- =====================================================
+-- 9. ADICIONAR FOREIGN KEYS (SE NÃO EXISTIREM)
 -- =====================================================
 DO $$
 BEGIN
@@ -337,6 +377,16 @@ BEGIN
         ALTER TABLE public.solicitacoes_teste 
         ADD CONSTRAINT solicitacoes_teste_usuario_id_fkey 
         FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id) ON DELETE CASCADE;
+    END IF;
+
+    -- iptv_playlists -> auth.users
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'iptv_playlists_usuario_id_fkey' AND table_name = 'iptv_playlists'
+    ) THEN
+        ALTER TABLE public.iptv_playlists 
+        ADD CONSTRAINT iptv_playlists_usuario_id_fkey 
+        FOREIGN KEY (usuario_id) REFERENCES auth.users(id) ON DELETE CASCADE;
     END IF;
 END $$;
 
@@ -399,8 +449,14 @@ CREATE TRIGGER update_solicitacoes_teste_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_iptv_playlists_updated_at ON public.iptv_playlists;
+CREATE TRIGGER update_iptv_playlists_updated_at
+    BEFORE UPDATE ON public.iptv_playlists
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
 -- =====================================================
--- 12. HABILITAR RLS EM TODAS AS TABELAS
+-- 13. HABILITAR RLS EM TODAS AS TABELAS
 -- =====================================================
 ALTER TABLE public.usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
@@ -408,6 +464,7 @@ ALTER TABLE public.planos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pedidos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notificacoes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.solicitacoes_teste ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.iptv_playlists ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================
 -- 13. POLÍTICAS RLS - USUÁRIOS
@@ -538,6 +595,34 @@ CREATE POLICY "Admins can update trial requests"
     USING (public.has_role(auth.uid(), 'admin'));
 
 -- =====================================================
+-- 19. POLÍTICAS RLS - IPTV PLAYLISTS
+-- =====================================================
+DROP POLICY IF EXISTS "Users can view their own playlists" ON public.iptv_playlists;
+CREATE POLICY "Users can view their own playlists" 
+    ON public.iptv_playlists FOR SELECT 
+    USING (auth.uid() = usuario_id);
+
+DROP POLICY IF EXISTS "Admins can view all playlists" ON public.iptv_playlists;
+CREATE POLICY "Admins can view all playlists" 
+    ON public.iptv_playlists FOR SELECT 
+    USING (public.has_role(auth.uid(), 'admin'));
+
+DROP POLICY IF EXISTS "Admins can insert playlists" ON public.iptv_playlists;
+CREATE POLICY "Admins can insert playlists" 
+    ON public.iptv_playlists FOR INSERT 
+    WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+DROP POLICY IF EXISTS "Admins can update playlists" ON public.iptv_playlists;
+CREATE POLICY "Admins can update playlists" 
+    ON public.iptv_playlists FOR UPDATE 
+    USING (public.has_role(auth.uid(), 'admin'));
+
+DROP POLICY IF EXISTS "Admins can delete playlists" ON public.iptv_playlists;
+CREATE POLICY "Admins can delete playlists" 
+    ON public.iptv_playlists FOR DELETE 
+    USING (public.has_role(auth.uid(), 'admin'));
+
+-- =====================================================
 -- 19. TRIGGER PARA CRIAR PERFIL AUTOMATICAMENTE
 -- Cria ou atualiza o perfil do usuário quando ele se registra
 -- =====================================================
@@ -608,6 +693,10 @@ CREATE INDEX IF NOT EXISTS idx_user_roles_role ON public.user_roles(role);
 
 CREATE INDEX IF NOT EXISTS idx_planos_ativo ON public.planos(ativo);
 CREATE INDEX IF NOT EXISTS idx_planos_status ON public.planos(status);
+
+CREATE INDEX IF NOT EXISTS idx_iptv_playlists_usuario_id ON public.iptv_playlists(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_iptv_playlists_ativo ON public.iptv_playlists(ativo);
+CREATE INDEX IF NOT EXISTS idx_iptv_playlists_created_at ON public.iptv_playlists(created_at DESC);
 
 -- =====================================================
 -- 22. POLÍTICAS RLS PARA SERVICE ROLE (EDGE FUNCTIONS)
