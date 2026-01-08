@@ -16,30 +16,36 @@ export type Database = {
     Tables: {
       iptv_playlists: {
         Row: {
+          arquivo_m3u: string | null
           ativo: boolean
           created_at: string
           id: string
           nome: string
+          tipo_fonte: string | null
           updated_at: string
-          url_m3u: string
+          url_m3u: string | null
           usuario_id: string
         }
         Insert: {
+          arquivo_m3u?: string | null
           ativo?: boolean
           created_at?: string
           id?: string
           nome?: string
+          tipo_fonte?: string | null
           updated_at?: string
-          url_m3u: string
+          url_m3u?: string | null
           usuario_id: string
         }
         Update: {
+          arquivo_m3u?: string | null
           ativo?: boolean
           created_at?: string
           id?: string
           nome?: string
+          tipo_fonte?: string | null
           updated_at?: string
-          url_m3u?: string
+          url_m3u?: string | null
           usuario_id?: string
         }
         Relationships: []
