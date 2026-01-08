@@ -93,15 +93,30 @@ serve(async (req) => {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
-      const response = await fetch(m3uUrl, {
+      const fetchHeaders = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cache-Control": "no-cache",
+      };
+
+      let attemptedUrl = m3uUrl;
+      let response = await fetch(attemptedUrl, {
         signal: controller.signal,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "*/*",
-          "Accept-Language": "en-US,en;q=0.9",
-          "Cache-Control": "no-cache",
-        },
+        headers: fetchHeaders,
       });
+
+      // Some IPTV providers only respond on HTTPS even if the URL is shared as HTTP.
+      // If HTTP returns 404, try the HTTPS equivalent.
+      if (!response.ok && response.status === 404 && m3uUrl.startsWith("http://")) {
+        const httpsUrl = `https://${m3uUrl.slice("http://".length)}`;
+        console.log("IPTV Proxy: HTTP returned 404, trying HTTPS:", httpsUrl);
+        attemptedUrl = httpsUrl;
+        response = await fetch(attemptedUrl, {
+          signal: controller.signal,
+          headers: fetchHeaders,
+        });
+      }
 
       clearTimeout(timeoutId);
 
@@ -109,10 +124,16 @@ serve(async (req) => {
 
       if (!response.ok) {
         console.log("IPTV Proxy: M3U fetch failed with status:", response.status);
-        return new Response(JSON.stringify({ error: `Falha ao buscar lista M3U (status: ${response.status})` }), {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            error: `Falha ao buscar lista M3U (status: ${response.status})`,
+            url: attemptedUrl,
+          }),
+          {
+            status: 502,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
       }
 
       const content = await response.text();
