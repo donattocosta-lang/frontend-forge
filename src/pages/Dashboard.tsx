@@ -8,7 +8,9 @@ import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { pedidoService, notificacaoService, solicitacaoTesteService, authService } from '@/services/supabase';
+import { iptvService, IPTVPlaylist } from '@/services/iptvService';
 import { useToast } from '@/hooks/use-toast';
+import { IPTVPlayer } from '@/components/IPTVPlayer';
 import { 
   User, 
   ShoppingBag, 
@@ -28,7 +30,9 @@ import {
   Gift,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Tv,
+  Play
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -43,6 +47,12 @@ const Dashboard = () => {
   const [solicitacoesTeste, setSolicitacoesTeste] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [solicitandoTeste, setSolicitandoTeste] = useState(false);
+  
+  // IPTV state
+  const [hasIPTVAccess, setHasIPTVAccess] = useState(false);
+  const [iptvAccessReason, setIPTVAccessReason] = useState('');
+  const [iptvPlaylists, setIPTVPlaylists] = useState<IPTVPlaylist[]>([]);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<IPTVPlaylist | null>(null);
   
   // Profile editing state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -90,10 +100,12 @@ const Dashboard = () => {
     
     setLoading(true);
     try {
-      const [pedidosData, notificacoesData, solicitacoesTesteData] = await Promise.all([
+      const [pedidosData, notificacoesData, solicitacoesTesteData, accessResult, playlistsData] = await Promise.all([
         pedidoService.getPedidos(user.id).catch(() => []),
         notificacaoService.getNotificacoes(user.id).catch(() => []),
         solicitacaoTesteService.getSolicitacoes(user.id).catch(() => []),
+        iptvService.checkUserAccess(user.id).catch(() => ({ hasAccess: false, reason: 'Erro ao verificar acesso' })),
+        iptvService.getPlaylistsForUser(user.id).catch(() => []),
       ]);
       
       // Format pedidos for display
@@ -106,6 +118,14 @@ const Dashboard = () => {
       setPedidos(formattedPedidos);
       setNotificacoes(notificacoesData);
       setSolicitacoesTeste(solicitacoesTesteData);
+      setHasIPTVAccess(accessResult.hasAccess);
+      setIPTVAccessReason(accessResult.reason);
+      setIPTVPlaylists(playlistsData);
+      
+      // Auto-select first playlist if available
+      if (playlistsData.length > 0 && !selectedPlaylist) {
+        setSelectedPlaylist(playlistsData[0]);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -262,6 +282,22 @@ const Dashboard = () => {
                 </div>
 
                 <nav className="space-y-2">
+                  {/* IPTV Player - only show if user has access and playlists */}
+                  {hasIPTVAccess && iptvPlaylists.length > 0 && (
+                    <button
+                      onClick={() => setActiveTab('iptv')}
+                      className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
+                        activeTab === 'iptv' ? 'bg-primary/20 text-primary' : 'hover:bg-muted'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Tv className="w-5 h-5" />
+                        <span>IPTV Player</span>
+                      </div>
+                      <Play className="w-4 h-4" />
+                    </button>
+                  )}
+
                   <button
                     onClick={() => setActiveTab('pedidos')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
@@ -372,6 +408,48 @@ const Dashboard = () => {
 
             {/* Main Content */}
             <div className="lg:col-span-3">
+              {/* IPTV Player Tab */}
+              {activeTab === 'iptv' && hasIPTVAccess && (
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                    <div>
+                      <h1 className="font-display text-2xl font-bold">IPTV Player</h1>
+                      <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        {iptvAccessReason}
+                      </p>
+                    </div>
+                    {iptvPlaylists.length > 1 && (
+                      <div className="flex gap-2">
+                        {iptvPlaylists.map((playlist) => (
+                          <Button
+                            key={playlist.id}
+                            variant={selectedPlaylist?.id === playlist.id ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSelectedPlaylist(playlist)}
+                          >
+                            {playlist.nome}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedPlaylist ? (
+                    <IPTVPlayer 
+                      playlistUrl={selectedPlaylist.url_m3u} 
+                      playlistName={selectedPlaylist.nome} 
+                    />
+                  ) : (
+                    <div className="text-center py-12 gradient-border rounded-2xl">
+                      <Tv className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="font-display text-xl font-semibold mb-2">Nenhuma playlist disponível</h3>
+                      <p className="text-muted-foreground">Entre em contato com o suporte para configurar sua playlist.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {activeTab === 'pedidos' && (
                 <div>
                   <div className="flex items-center justify-between mb-6">

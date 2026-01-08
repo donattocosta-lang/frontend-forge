@@ -12,6 +12,7 @@ import {
   solicitacaoTesteService, 
   estatisticasService 
 } from '@/services/supabase';
+import { iptvService, IPTVPlaylistWithUser } from '@/services/iptvService';
 import { useToast } from '@/hooks/use-toast';
 import { 
   LayoutDashboard, 
@@ -29,7 +30,10 @@ import {
   Edit,
   Eye,
   Gift,
-  XCircle
+  XCircle,
+  Tv,
+  Trash2,
+  Link as LinkIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -49,6 +53,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -66,12 +71,14 @@ const AdminDashboard = () => {
   const [planos, setPlanos] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [solicitacoesTeste, setSolicitacoesTeste] = useState<any[]>([]);
+  const [iptvPlaylists, setIptvPlaylists] = useState<IPTVPlaylistWithUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState('todos');
   const [testeSearchTerm, setTesteSearchTerm] = useState('');
   const [testeStatusFilter, setTesteStatusFilter] = useState('todos');
+  const [iptvSearchTerm, setIptvSearchTerm] = useState('');
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const [selectedUsuario, setSelectedUsuario] = useState<any>(null);
   const [selectedTeste, setSelectedTeste] = useState<any>(null);
@@ -81,6 +88,15 @@ const AdminDashboard = () => {
   const [testeDialogOpen, setTesteDialogOpen] = useState(false);
   const [editingPlano, setEditingPlano] = useState<any>(null);
   const [processingTeste, setProcessingTeste] = useState(false);
+  
+  // IPTV Dialog state
+  const [iptvDialogOpen, setIptvDialogOpen] = useState(false);
+  const [newPlaylist, setNewPlaylist] = useState({
+    usuario_id: '',
+    nome: 'Playlist Principal',
+    url_m3u: ''
+  });
+  const [savingPlaylist, setSavingPlaylist] = useState(false);
 
   useEffect(() => {
     if (!isLoading) {
@@ -130,6 +146,15 @@ const AdminDashboard = () => {
       if (activeTab === 'testes') {
         const testesData = await solicitacaoTesteService.getAllSolicitacoes();
         setSolicitacoesTeste(testesData);
+      }
+
+      if (activeTab === 'iptv') {
+        const [playlistsData, usuariosData] = await Promise.all([
+          iptvService.getAllPlaylists(),
+          usuarioService.getAllUsuarios()
+        ]);
+        setIptvPlaylists(playlistsData);
+        setUsuarios(usuariosData);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -245,10 +270,45 @@ const AdminDashboard = () => {
     );
   }
 
+  const handleCreatePlaylist = async () => {
+    if (!newPlaylist.usuario_id || !newPlaylist.url_m3u) {
+      toast({ title: "Erro", description: "Preencha todos os campos", variant: "destructive" });
+      return;
+    }
+    setSavingPlaylist(true);
+    try {
+      await iptvService.createPlaylist(newPlaylist.usuario_id, newPlaylist.nome, newPlaylist.url_m3u);
+      toast({ title: "Playlist criada", description: "Playlist adicionada com sucesso." });
+      setIptvDialogOpen(false);
+      setNewPlaylist({ usuario_id: '', nome: 'Playlist Principal', url_m3u: '' });
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingPlaylist(false);
+    }
+  };
+
+  const handleDeletePlaylist = async (id: string) => {
+    try {
+      await iptvService.deletePlaylist(id);
+      toast({ title: "Playlist removida", description: "Playlist removida com sucesso." });
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const filteredIptvPlaylists = iptvPlaylists.filter(p => 
+    p.usuario_nome?.toLowerCase().includes(iptvSearchTerm.toLowerCase()) ||
+    p.usuario_email?.toLowerCase().includes(iptvSearchTerm.toLowerCase())
+  );
+
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'pedidos', icon: ShoppingBag, label: 'Pedidos', badge: stats.acessos_pendentes },
     { id: 'testes', icon: Gift, label: 'Testes Grátis', badge: stats.testes_pendentes },
+    { id: 'iptv', icon: Tv, label: 'IPTV Playlists' },
     { id: 'planos', icon: Package, label: 'Planos' },
     { id: 'usuarios', icon: Users, label: 'Usuários' },
   ];
@@ -677,10 +737,112 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               )}
+
+              {/* IPTV Playlists View */}
+              {activeTab === 'iptv' && (
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h1 className="font-display text-2xl font-bold">Gerenciar Playlists IPTV</h1>
+                    <Button variant="gradient" onClick={() => setIptvDialogOpen(true)}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nova Playlist
+                    </Button>
+                  </div>
+
+                  <div className="relative mb-6">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por cliente..."
+                      className="pl-10"
+                      value={iptvSearchTerm}
+                      onChange={(e) => setIptvSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="gradient-border rounded-2xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Cliente</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Nome Playlist</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">URL M3U</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Status</th>
+                            <th className="text-left py-4 px-4 text-sm font-medium">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredIptvPlaylists.map((playlist) => (
+                            <tr key={playlist.id} className="border-b border-border/50 hover:bg-muted/30">
+                              <td className="py-4 px-4">
+                                <div>
+                                  <p className="font-medium">{playlist.usuario_nome}</p>
+                                  <p className="text-sm text-muted-foreground">{playlist.usuario_email}</p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">{playlist.nome}</td>
+                              <td className="py-4 px-4">
+                                <span className="text-xs text-muted-foreground truncate max-w-[200px] block">{playlist.url_m3u}</span>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-2 py-1 text-xs rounded-full ${playlist.ativo ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'}`}>
+                                  {playlist.ativo ? 'Ativo' : 'Inativo'}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeletePlaylist(playlist.id)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </main>
       </div>
+
+      {/* IPTV Playlist Dialog */}
+      <Dialog open={iptvDialogOpen} onOpenChange={setIptvDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Playlist IPTV</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Cliente</Label>
+              <Select value={newPlaylist.usuario_id} onValueChange={(v) => setNewPlaylist({...newPlaylist, usuario_id: v})}>
+                <SelectTrigger className="mt-2"><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
+                <SelectContent>
+                  {usuarios.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>{u.nome_completo} ({u.email})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Nome da Playlist</Label>
+              <Input value={newPlaylist.nome} onChange={(e) => setNewPlaylist({...newPlaylist, nome: e.target.value})} className="mt-2" />
+            </div>
+            <div>
+              <Label>URL M3U</Label>
+              <Input value={newPlaylist.url_m3u} onChange={(e) => setNewPlaylist({...newPlaylist, url_m3u: e.target.value})} className="mt-2" placeholder="https://..." />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIptvDialogOpen(false)}>Cancelar</Button>
+              <Button variant="gradient" onClick={handleCreatePlaylist} disabled={savingPlaylist}>
+                {savingPlaylist ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                Criar Playlist
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Pedido Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
