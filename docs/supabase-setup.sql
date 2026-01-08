@@ -729,16 +729,19 @@ CREATE POLICY "Service role can insert notifications"
 --    - MERCADOPAGO_ACCESS_TOKEN: Seu Access Token do MercadoPago
 --    - MERCADOPAGO_PUBLIC_KEY: Sua Public Key do MercadoPago
 --    - SUPABASE_URL: https://seu-projeto.supabase.co
+--    - SUPABASE_ANON_KEY: Sua Anon Key do Supabase (usada pelo iptv-proxy)
 --    - SUPABASE_SERVICE_ROLE_KEY: Sua Service Role Key do Supabase
 --
 -- 3. DEPLOY DAS EDGE FUNCTIONS:
 --    Copie as pastas de supabase/functions/ para seu projeto:
---    - mercadopago/index.ts (processa pagamentos)
+--    - mercadopago/index.ts         (processa pagamentos)
 --    - mercadopago-webhook/index.ts (recebe notificações do MercadoPago)
+--    - iptv-proxy/index.ts          (proxy para buscar playlists M3U)
 --    
 --    Deploy via CLI:
 --    $ supabase functions deploy mercadopago
 --    $ supabase functions deploy mercadopago-webhook
+--    $ supabase functions deploy iptv-proxy --no-verify-jwt
 --
 -- 4. CONFIGURAR WEBHOOK NO MERCADOPAGO:
 --    Acesse: https://www.mercadopago.com.br/developers/panel/app
@@ -771,13 +774,60 @@ CREATE POLICY "Service role can insert notifications"
 --
 -- supabase/functions/
 -- ├── mercadopago/
--- │   └── index.ts          # Processa pagamentos e retorna public key
--- └── mercadopago-webhook/
---     └── index.ts          # Recebe notificações do MercadoPago
+-- │   └── index.ts              # Processa pagamentos e retorna public key
+-- ├── mercadopago-webhook/
+-- │   └── index.ts              # Recebe notificações do MercadoPago
+-- └── iptv-proxy/
+--     └── index.ts              # Proxy para buscar playlists M3U (evita CORS)
 --
 -- A função mercadopago suporta as seguintes ações (via query param ?action=):
 -- - get-public-key: Retorna a public key do MercadoPago
 -- - create-preference: Cria uma preferência de pagamento
 -- - process-payment: Processa um pagamento com cartão
+--
+-- =====================================================
+-- EDGE FUNCTION: iptv-proxy
+-- =====================================================
+--
+-- A função iptv-proxy atua como proxy server-side para buscar playlists M3U
+-- de provedores IPTV externos, contornando restrições de CORS do navegador.
+--
+-- CARACTERÍSTICAS:
+-- - Valida autenticação JWT do usuário
+-- - Verifica se o usuário tem acesso à playlist (tabela iptv_playlists)
+-- - Busca a URL M3U armazenada no banco (nunca expõe credenciais ao frontend)
+-- - Fallback automático de HTTP para HTTPS se o servidor retornar 404
+-- - Timeout de 30 segundos para evitar travamentos
+-- - Headers User-Agent para simular navegador (alguns provedores bloqueiam bots)
+-- - Logs redactados (senhas/tokens nunca aparecem nos logs)
+--
+-- USO NO FRONTEND:
+-- O componente IPTVPlayer chama via supabase.functions.invoke:
+--
+--   const { data, error } = await supabase.functions.invoke('iptv-proxy', {
+--     body: { playlistId: 'uuid-da-playlist' }
+--   });
+--
+-- PARÂMETROS (POST body ou query string):
+-- - playlistId: UUID da playlist (preferido - mais seguro)
+-- - url: URL M3U direta (fallback - menos seguro, expõe credenciais na requisição)
+--
+-- RESPOSTAS:
+-- - 200: Conteúdo M3U em text/plain
+-- - 400: playlistId ou url não fornecido
+-- - 401: Usuário não autenticado
+-- - 403: Playlist não encontrada ou usuário sem acesso
+-- - 502: Falha ao buscar M3U do provedor (servidor retornou erro)
+-- - 504: Timeout ao buscar M3U
+--
+-- CONFIGURAÇÃO NO config.toml:
+-- [functions.iptv-proxy]
+-- verify_jwt = false   # JWT é validado manualmente no código
+--
+-- SEGURANÇA:
+-- - A URL M3U (com credenciais) é armazenada apenas no banco de dados
+-- - O frontend só envia o playlistId, nunca a URL com senha
+-- - Logs nunca expõem username/password (são redactados)
+-- - Apenas o dono da playlist pode acessá-la (RLS + verificação no código)
 --
 -- =====================================================
